@@ -47,7 +47,7 @@ Grains有一个受管理的生命周期，Orleans运行时负责激活/停用Gra
 
 一个简单的恒温器可以模拟如下：
 
-``` C#
+``` csharp
 public interface IThermostat : IGrainWithStringKey
 {
   Task<List<Command>> OnUpdate(ThermostatStatus update);
@@ -56,14 +56,14 @@ public interface IThermostat : IGrainWithStringKey
 
 从Web前端中的恒温器到达的事件可以通过调用`OnUpdate`方法发送给其对应的Grain，该方法可以选择性地将一个命令发回给设备。
 
-``` C#
+``` csharp
 var thermostat = client.GetGrain<IThermostat>(id);
 return await thermostat.OnUpdate(update);
 ```
 
 同一个恒温器Grain可以实现一个单独的接口，供控制系统交互使用：
 
-``` C#
+``` csharp
 public interface IThermostatControl : IGrainWithStringKey
 {
   Task<ThermostatStatus> GetStatus();
@@ -74,7 +74,7 @@ public interface IThermostatControl : IGrainWithStringKey
 
 这两个接口（`IThermostat` 和 `IThermostatControl`）被同一个类实现:
 
-``` C#
+``` csharp
 public class ThermostatGrain : Grain, IThermostat, IThermostatControl
 {
   private ThermostatStatus _status;

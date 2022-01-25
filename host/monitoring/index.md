@@ -26,21 +26,21 @@ The performance counters can be monitored using any of the standard monitoring t
 - `Microsoft.Orleans.OrleansTelemetryConsumers.NewRelic`, for publishing to [New Relic](https://newrelic.com/).
 
 To configure your silo and client to use telemetry consumers, silo configuration code looks like this: 
-```c#
+```csharp
 var siloHostBuilder = new SiloHostBuilder();
 //configure the silo with AITelemetryConsumer
 siloHostBuilder.AddApplicationInsightsTelemetryConsumer("INSTRUMENTATION_KEY");
 ```
 
 Client configuration code look like this: 
-```c#
+```csharp
 var clientBuilder = new ClientBuilder();
 //configure the clientBuilder with AITelemetryConsumer
 clientBuilder.AddApplicationInsightsTelemetryConsumer("INSTRUMENTATION_KEY");
 ```
 
 To use a custom defined TelemetryConfiguration (which may have TelemetryProcessors, TelemetrySinks, etc.), silo configuration code looks like this: 
-```c#
+```csharp
 var siloHostBuilder = new SiloHostBuilder();
 var telemetryConfiguration = TelemetryConfiguration.CreateDefault();
 //configure the silo with AITelemetryConsumer
@@ -48,7 +48,7 @@ siloHostBuilder.AddApplicationInsightsTelemetryConsumer(telemetryConfiguration);
 ```
 
 Client configuration code look like this: 
-```c#
+```csharp
 var clientBuilder = new ClientBuilder();
 var telemetryConfiguration = TelemetryConfiguration.CreateDefault();
 //configure the clientBuilder with AITelemetryConsumer

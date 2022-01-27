@@ -109,7 +109,7 @@ Orleans运行时实现了应用程序的编程模型。运行时的主要组件�
 运行时使Cluster中托管的Grains能够相互通信，就像它们在同一个进程中一样。
 
 除了核心编程模型外，Silo还为Grains提供了一套运行时服务，如计时器、提醒器（持续计时器）、持久化、事务、流等。
-更多细节见下面的[特性](#features)。
+更多细节见下面的[特性](#特性)。
 
 Web前端和其他外部客户端可以使用客户端库，来调用Cluster中的Grains，这个库能够自动管理网络通信。
 简单起见，客户端也可以和Silos在同一进程中共同托管。
@@ -121,7 +121,7 @@ Orleans与.NET Standard 2.0及更高版本兼容，可以运行在Windows、Linu
 ### 持久化
 
 Orleans提供了一个简单的持久化模型，以确保在请求被处理前，状态对Grains可用且保持一致性。
-Grains可以有多个命名的持久化数据对象，例如，一个名为“profile”的对象用于存储用户信息，一个名为“inventory”的对象用于存储用户的库存。状态可以存储在任意存储系统中。
+Grains可以有多个具名的持久化数据对象，例如，一个名为“profile”的对象用于存储用户信息，一个名为“inventory”的对象用于存储用户的库存。状态可以存储在任意存储系统中。
 例如，用户信息可以存储在一个数据库中，而库存可以存储在另一个数据库中。
 当Grain运行时，这个状态存储在内存中，这样就可以在不访问存储系统的情况下处理读取请求。
 当一个Grain更新了它的状态，`state.WriteStateAsync()` 调用确保其对应存储也被更新，以保证持久性和一致性。
@@ -244,7 +244,7 @@ Nightly构建版发布在https://orleans.pkgs.visualstudio.com/orleans-public/_p
 * 通过[在Github上创建issue](https://github.com/dotnet/orleans/issues)或通过[Stack Overflow](https://stackoverflow.com/questions/ask?tags=orleans)进行提问。
 * [在Discord上交流](https://aka.ms/orleans-discord)
 * 关注[@msftorleans](https://twitter.com/msftorleans)Twitter账户获取有关Orleans的公告。
-* [OrleansContrib - 用于Orleans的社区插件的GitHub组织](https://github.com/OrleansContrib/)各种社区项目，包括监控、设计模式、存储供应商等。
+* [OrleansContrib - 用于Orleans的社区插件的GitHub组织](https://github.com/OrleansContrib/)各种社区项目，包括监控、设计模式、Storage Provider等。
 * 为希望[为Orleans贡献代码](resources/contributing.md)的开发者提供的指南。
 * 我们同样鼓励你通过在GitHub上创建一个新的[会话](https://github.com/dotnet/orleans/issues)来报告错误或进行技术讨论。
 

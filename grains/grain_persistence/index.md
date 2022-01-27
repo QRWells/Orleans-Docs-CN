@@ -1,33 +1,35 @@
 ---
-title: Persistence
+description: 本节将介绍Orleans中的持久化手段
 ---
 
-# Persistence
+# 持久化
 
-Grains can have multiple named persistent data objects associated with them. These state objects are loaded from storage during grain activation so that they are available during requests. Grain persistence uses an extensible plugin model so that storage providers for any database can be used. This persistence model is designed for simplicity, and is not intended to cover all data access patterns. Grains can also access databases directly, without using the grain persistence model.
+Grains可以有多个与之关联的具名持久化数据对象。这些状态对象会在Grain激活期间从存储器中加载，以便其在请求时可用。
+Grains的持久化采用了一个可扩展插件模型，从而可以使用任意数据库的Storage provider。这一持久化模型是为了简易性设计的，并不打算涵盖所有数据访问模式。
+Grains也可以不使用Grain持久化模型，直接访问数据库。
 
-![A grain can have multiple persisted data objects each stored in a different storage system](~/images/grain_state_1.png)
+![一个Grain可以有多个存储在不同储存系统中的持久化数据对象](https://raw.githubusercontent.com/dotnet/orleans-docs/main/src/images/grain_state_1.png)
 
-In the above diagram, UserGrain has a *Profile* state and a *Cart* state, each of which is stored in a separate storage system.
+在上图中，UserGrain有一个*Profile*状态和一个*Cart*状态，每个状态都存储在一个单独的存储系统中。
 
-## Goals
+## 宗旨
 
-1. Multiple named persistent data objects per grain.
-2. Multiple configured storage providers, each of which can have different configuration and be backed by a different storage system.
-3. Storage providers can be developed and published by the community.
-4. Storage providers have complete control over how they store grain state data in persistent backing store. Corollary: Orleans is not providing a comprehensive ORM storage solution, but instead allows custom storage providers to support specific ORM requirements as and when required.
+1. 每个Grain有多个具名的持久化数据对象。
+2. 多个可配置的Storage providers，每个都可以有不同的配置，并基于不同的存储系统。
+3. Storage providers可以由社区开发并发布。
+4. Storage providers可以完全控制它们如何在持久化底层存储中存储Grain状态的数据。推论：Orleans并没有提供全面的ORM存储解决方案，而是允许自定义Storage providers在需要时支持特定的ORM需求。
 
-## Packages
+## 相关的包
 
-Orleans grain storage providers can be found on [NuGet](https://www.nuget.org/packages?q=Orleans+Persistence). Officially maintained packages include:
+Orleans grain的Storage providers可以在[NuGet](https://www.nuget.org/packages?q=Orleans+Persistence)上找到。官方维护的包有：
 
-* [Microsoft.Orleans.Persistence.AdoNet](https://www.nuget.org/packages/Microsoft.Orleans.Persistence.AdoNet) is for SQL databases and other storage systems supported by ADO.NET. For more information, see [ADO.NET Grain Persistence](relational_storage.md).
-* [Microsoft.Orleans.Persistence.AzureStorage](https://www.nuget.org/packages/Microsoft.Orleans.Persistence.AzureStorage) is for Azure Storage, including Azure Blob Storage, Azure Table Storage, and Azure CosmosDB, via the Azure Table Storage API. For more information, see [Azure Storage Grain Persistence](azure_storage.md).
-* [Microsoft.Orleans.Persistence.DynamoDB](https://www.nuget.org/packages/Microsoft.Orleans.Persistence.DynamoDB) is for Amazon DynamoDB. For more information, see [Amazon DynamoDB Grain Persistence](dynamodb_storage.md).
+* [Microsoft.Orleans.Persistence.AdoNet](https://www.nuget.org/packages/Microsoft.Orleans.Persistence.AdoNet)用于SQL数据库和其他由ADO.NET支持的存储系统。更多信息请参见[ADO.NET Grain持久化](relational_storage.md)。
+* [Microsoft.Orleans.Persistence.AzureStorage](https://www.nuget.org/packages/Microsoft.Orleans.Persistence.AzureStorage)用于Azure，包括Azure Blob Storage，Azure Table Storage以及Azure CosmosDB，通过使用Azure Table Storage API。更多信息请参见[Azure Storage Grain持久化](azure_storage.md)。
+* [Microsoft.Orleans.Persistence.DynamoDB](https://www.nuget.org/packages/Microsoft.Orleans.Persistence.DynamoDB)用于Amazon DynamoDB。更多信息请参见[Amazon DynamoDB Grain持久化](dynamodb_storage.md)。
 
 ## API
 
-Grains interact with their persistent state using `IPersistentState<TState>` where `TState` is the serializable state type:
+Grains使用`IPersistentState<TState>`接口与它们的持久化状态进行交互，其中`TState`是可序列化的状态类型：
 
 ``` csharp
 public interface IPersistentState<TState> where TState : new()
@@ -40,7 +42,9 @@ public interface IPersistentState<TState> where TState : new()
 }
 ```
 
-Instances of `IPersistentState<TState>` are injected into the grain as constructor parameters. These parameters can be annotated with a `[PersistentState(stateName, storageName)]` attribute to identify the name of the state being injected and the name of the storage provider which provides it. The following example demonstrates this by injecting two named states into the `UserGrain` constructor:
+`IPersistentState<TState>`的实例作为构造函数的参数被注入到Grain中。
+这些参数可以用`[PersistentState(stateName, storageName)]`属性来注解，以识别被注入的状态的名称和提供该状态的Storage provider的名称。
+下面的例子通过向`UserGrain`构造函数注入两个具名状态来证明这一点。
 
 ``` csharp
 public class UserGrain : Grain, IUserGrain
@@ -59,28 +63,30 @@ public class UserGrain : Grain, IUserGrain
 }
 ```
 
-Different grain types can use different configured storage providers, even if both are the same type; for example, two different Azure Table Storage provider instances, connected to different Azure Storage accounts.
+不同的Grain类型可以使用不同的可配置的Storage provider，即使两者是同一类型。例如，两个不同的Azure Table的Storage provider实例，连接到了不同的Azure Storage账户。
 
-### Reading State
+### 读取状态
 
-Grain state will automatically be read when the grain is activated, but grains are responsible for explicitly triggering the write for any changed grain state when necessary.
+当Grain被激活时，Grain状态将被自动读取，但在必要时，Grain负责显式触发任何发生改变的Grain状态的写入。
 
-If a grain wishes to explicitly re-read the latest state for this grain from the backing store, the grain should call the `ReadStateAsync()` method.
-This will reload the grain state from the persistent store via the storage provider, and the previous in-memory copy of the grain state will be overwritten and replaced when the `ReadStateAsync()` `Task` completes.
+如果一个Grain想要显式地从后台存储中重新读取最新的状态，它应该调用`ReadStateAsync()`方法。
+这将会通过storage provider从持久化存储中重新加载Grain状态，当`ReadStateAsync()`这一`Task`完成时，先前的Grain状态的内存副本将被覆盖并替换。
 
-The value of the state is accessed using the `State` property. For example, the following method accesses the profile state declared in the code above:
+状态的值是通过`State`属性来访问的。例如，下面的方法可以访问上面代码中声明的profile状态：
 
 ``` csharp
 public Task<string> GetNameAsync() => Task.FromResult(_profile.State.Name);
 ```
 
-There is no need to call `ReadStateAsync()` during normal operation; the state is loaded automatically during activation. However, `ReadStateAsync()` can be used to refresh state which is modified externally.
+在正常操作中不需要调用`ReadStateAsync()`，状态会在激活时自动加载。但是，`ReadStateAsync()`可以用来刷新被外部修改的状态。
 
-See the [Failure Modes](#FailureModes) section below for details of error-handling mechanisms.
+有关错误处理机制的详情，请参见下面的[故障模式](#持久化操作的故障模式)部分。
 
-### Writing State
+### 写入状态
 
-State can be modified via the `State` property. Modified state is not automatically persisted. Instead, the developer decides when to persist state by calling the `WriteStateAsync()` method. For example, the following method updates a property on `State` and persists the updated state:
+状态也可以通过`State`属性进行修改。修改后的状态不会被自动持久化。
+相反，开发者可以通过调用`WriteStateAsync()`方法来决定何时持久化状态。
+例如，下面的方法更新了`State`上的一个属性并持久化了更新后的状态：
 
 ``` csharp
 public async Task SetNameAsync(string name)
@@ -90,62 +96,64 @@ public async Task SetNameAsync(string name)
 }
 ```
 
-Conceptually, the Orleans Runtime will take a deep copy of the grain state data object for its own use during any write operations. Under the covers, the runtime _may_ use optimization rules and heuristics to avoid performing some or all of the deep copy in some circumstances, provided that the expected logical isolation semantics are preserved.
+从概念上讲，Orleans运行时将在任何写操作期间对Grain状态数据对象进行深拷贝，供其自身使用。
+在某些情况下，运行时 _可能_ 会使用优化规则和启发式方法来避免执行部分或全部的深拷贝，前提是要保留期望的逻辑隔离语义。
 
-See the [Failure Modes](#FailureModes) section below for details of error handling mechanisms.
+有关错误处理机制的详情，请参见下面的[故障模式](#持久化操作的故障模式)部分。
 
-### Clearing State
+### 清除状态
 
-The `ClearStateAsync()` method clears the grain's state in storage. Depending on the provider, this operation may optionally delete the grain state entirely.
+`ClearStateAsync()`方法会清除存储中的Grain状态。根据Provider的情况，这个操作可以选择完全删除Grain的状态。
 
-## Getting Started
+## 入门指南
 
-Before a grain can use persistence, a storage provider must be configured on the silo.
+在Grain可以使用持久化之前，必须在Silo上配置一个Storage provider。
 
-First, configure storage providers, one for profile state and one for cart state:
+首先，配置Storage providers，一个用于profile状态，一个用于cart状态：
 
 ``` csharp
 var host = new HostBuilder()
   .UseOrleans(siloBuilder =>
   {
-    // Configure Azure Table storage using the name "profileStore"
+    // 使用"profileStore"名称配置Azure Table存储
     siloBuilder.AddAzureTableGrainStorage(
       name: "profileStore",
       configureOptions: options =>
       {
-        // Use JSON for serializing the state in storage
+        // 使用JSON来序列化存储里的状态
         options.UseJson = true;
 
-        // Configure the storage connection key
+        // 配置存储的连接key
         options.ConnectionString = "DefaultEndpointsProtocol=https;AccountName=data1;AccountKey=SOMETHING1";
       })
 
-      // Configure Azure Blob storage using the name "cartStore"
+      // 使用"cartStore"名称配置Azure Blob存储
       .AddAzureBlobGrainStorage(
         name: "cartStore",
         configureOptions: options =>
         {
-            // Use JSON for serializing the state in storage
+            // 使用JSON来序列化存储里的状态
             options.UseJson = true;
 
-            // Configure the storage connection key
+            // 配置存储的连接key
             options.ConnectionString = "DefaultEndpointsProtocol=https;AccountName=data2;AccountKey=SOMETHING2";
         });
-    // -- other options
+    // -- 其他选项
   })
   .Build();
 ```
 
-Now that a storage provider has been configured with the name `"profileStore"`, we can access this provider from a grain.
+现在我们已经配置了一个名为`"profileStore"`的Storage provider，我们可以从一个Grain中访问这个Provider。
 
-Persistent state can be added to a grain in two primary ways:
+持久化状态主要通过两种方式添加到Grain中：
 
-1. By injecting `IPersistentState<TState>` into the grain's constructor
-2. By inheriting from `Grain<TState>`
+1. 将`IPersistentState<TState>`注入到Grain的构造函数中
+2. 继承`Grain<TState>`
 
-The recommended way to add storage to a grain is by injecting `IPersistentState<TState>` into the grain's constructor with an associated `[PersistentState("stateName", "providerName")]` attribute. For details on [`Grain<TState>`, see below](#using-grainlttstategt-to-add-storage-to-a-grain). This is still supported, but is considered legacy.
+我们推荐的方法是将`IPersistentState<TState>`注入到Grain的构造函数中，并使用相关联的`[PersistentState("stateName", "providerName")]`特性来向Grain添加存储。
+有关`Grain<TState>`的详细信息，见[下文](#使用graintstate将存储加进grain)。这种方法仍然受支持，但被视为老旧的方法。 
 
-Declare a class to hold our grain's state:
+声明一个类来容纳我们的Grain的状态：
 
 ``` csharp
 [Serializable]
@@ -157,7 +165,7 @@ public class ProfileState
 }
 ```
 
-Inject `IPersistentState<ProfileState>` into the grain's constructor:
+将`IPersistentState<TState>`注入到Grain的构造函数中
 
 ``` csharp
 public class UserGrain : Grain, IUserGrain
@@ -171,9 +179,10 @@ public class UserGrain : Grain, IUserGrain
 }
 ```
 
-Note: the profile state will not be loaded at the time it is injected into the constructor, so accessing it is invalid at that time. The state will be loaded before `OnActivateAsync` is called.
+注意：profile状态在被注入构造函数时不会被加载，所以在那时是无法访问它的。
+状态将在`OnActivateAsync`被调用之前被加载。
 
-Now that the grain has persistent state, we can add methods to read and write the state:
+现在Grain有了持久化状态，我们可以添加方法来读取和写入状态：
 
 ``` csharp
 public class UserGrain : Grain, IUserGrain
@@ -195,38 +204,42 @@ public class UserGrain : Grain, IUserGrain
 }
 ```
 
-## Failure modes for persistence operations <a name="FailureModes"></a>
+## 持久化操作的故障模式
 
-### Failure modes for read operations
+### 读操作的故障模式
 
-Failures returned by the storage provider during the initial read of state data for that particular grain will result in failure of the activate operation for that grain; in such case, there will _not_ be any call to that grain’s `OnActivateAsync()` life cycle callback method.
-The original request to the grain which caused the activation will be faulted back to the caller, the same way as any other failure during grain activation.
-Failures encountered by the storage provider when reading state data for a particular grain will result in an exception from `ReadStateAsync()` `Task`.
-The grain can choose to handle or ignore the `Task` exception, just like any other `Task` in Orleans.
+在最初读取某个Grain的状态数据时，Storage provider返回的故障将导致该Grain的激活操作失败。
+在这种情况下，将 _不会_ 对该Grain的生命周期回调方法`OnActivateAsync()`进行任何调用。
+发送给Grain并引发其激活的原始请求会把故障返回给调用者，这像Grain激活期间的其他故障一样。
+Storage provider在为某个Grain读取状态数据时遇到的故障会使`ReadStateAsync()` `Task`抛出异常。
+Grain可以选择处理或忽略`Task`异常，就像Orleans的其他`Task`一样。
 
-Any attempt to send a message to a grain which failed to load at silo startup time due to a missing / bad storage provider config will return the permanent error `Orleans.BadProviderConfigException`.
+若一个Grain在Silo启动时因缺少或损坏的Storage provider配置而无法加载，那么向该Grain发送消息将会返回永久错误`Orleans.BadProviderConfigException`。
 
-### Failure modes for write operations
+### 写操作的故障模式
 
-Failures encountered by the storage provider when writing state data for a particular grain will result in an exception thrown by `WriteStateAsync()` `Task`.
-Usually this means that the grain call exception will be thrown back to the client caller, provided the `WriteStateAsync()` `Task` is correctly chained in to the final return `Task` for this grain method.
-However, it is possible in certain advanced scenarios to write grain code to specifically handle such write errors, just like they can handle any other faulted `Task`.
+Storage provider在为某一Grain写入状态数据时遇到的故障将导致`WriteStateAsync()` `Task`抛出一个异常。
+这通常意味着，只要`WriteStateAsync()` `Task`被正确地连接进这个Grain方法最终返回的`Task`，Grain调用异常就会被抛回给客户端调用者。
+然而，在某些进阶场景中，有可能编写Grain代码来专门处理这种写入错误，就像它们可以处理任何其他故障的`Task`一样。
 
-Grains that execute error-handling / recovery code _must_ catch exceptions / faulted `WriteStateAsync()` `Task`s and not re-throw them, to signify that they have successfully handled the write error.
+执行错误处理或恢复代码的Grains必须捕获异常或故障的`WriteStateAsync()` `Task`，且不重新抛出，以表示它们已经成功地处理了写入错误。
 
-## Recommendations
+## 建议
 
-### Use JSON serialization or another version-tolerant serialization format
+### 使用JSON序列化或另一种具有版本容错的序列化格式
 
-Code evolves over time and this often includes storage types, too. To accommodate for these changes, an appropriate serializer should be configured. For most storage providers, a `UseJson` option or similar is available to use JSON as a serialization format. Ensure that when evolving data contracts that already-stored data will still be loadable.
+代码随着时间的推移而改进，这往往也包括存储类型。
+为了适应这些变化，应该配置一个合适的序列化器。
+对于大多数Storage providers来说，`UseJson`选项或类似的选项可用于使用JSON作为序列化格式。
+确保在改进数据合约时，已经存储的数据仍然可以加载。
 
-## Using Grain&lt;TState&gt; to add storage to a grain
+## 使用`Grain<TState>`将存储加进Grain
 
-**NOTE:** Using `Grain<T>` to add storage to a grain is considered *legacy* functionality: grain storage should be added using `IPersistentState<T>` as previously described.
+**注意：** 使用`Grain<T>`为Grain添加存储是*老旧*的功能：Grain存储应该使用`IPersistentState<T>`来添加，如之前所述。
 
-Grain classes that inherit from `Grain<T>` (where `T` is an application-specific state data type that needs to be persisted) will have their state loaded automatically from a specified storage.
+继承了`Grain<T>`的Grain类（其中`T`是需要持久化的特定应用状态数据类型）将从指定的存储中自动加载其状态。
 
-Such grains are marked with a `[StorageProvider]` attribute that specifies a named instance of a storage provider to use for reading / writing the state data for this grain.
+这样的Grains被标记为`[StorageProvider]`特性，它指定了一个Storage provider的具名实例，用于读取/写入该Grain的状态数据。
 
 ``` csharp
 [StorageProvider(ProviderName="store1")]
@@ -236,7 +249,7 @@ public class MyGrain : Grain<MyGrainState>, /*...*/
 }
 ```
 
-The `Grain<T>` base class defined the following methods for subclasses to call:
+`Grain<T>`基类定义了如下方法给派生类调用：
 
 ``` csharp
 protected virtual Task ReadStateAsync() { /*...*/ }
@@ -244,11 +257,12 @@ protected virtual Task WriteStateAsync() { /*...*/ }
 protected virtual Task ClearStateAsync() { /*...*/ }
 ```
 
-The behavior of these methods corresponds to their counterparts on `IPersistentState<TState>` defined earlier.
+这些方法的行为对应于前文定义的`IPersistentState<TState>`中的对应方法。
 
-## Creating a storage provider
+## 创建一个Storage provider
 
-There are two parts to the state persistence APIs: the API exposed to the grain via `IPersistentState<T>` or `Grain<T>`, and the storage provider API, which is centered around `IGrainStorage` — the interface which storage providers must implement:
+状态持久化API有两部分：通过`IPersistentState<T>`或`Grain<T>`暴露给Grain的API，以及以`IGrainStorage`为中心的Storage provider API，
+这些是Storage provider必须实现的接口：
 
 ``` csharp
 /// <summary>
@@ -279,13 +293,16 @@ public interface IGrainStorage
 }
 ```
 
-Create a custom storage provider by implementing this interface and [registering](#registering-a-storage-provider) that implementation. For an example of an existing storage provider implementation, see [`AzureBlobGrainStorage`](https://github.com/dotnet/orleans/blob/af974d37864f85bfde5dc02f2f60bba997f2162d/src/Azure/Orleans.Persistence.AzureStorage/Providers/Storage/AzureBlobStorage.cs).
+通过实现这个接口并[注册](#注册一个storage-provider)这个实现来创建一个自定义Storage provider。
+对于现有的Storage provider的实现的示例，请参见[`AzureBlobGrainStorage`](https://github.com/dotnet/orleans/blob/af974d37864f85bfde5dc02f2f60bba997f2162d/src/Azure/Orleans.Persistence.AzureStorage/Providers/Storage/AzureBlobStorage.cs)。
 
-### Storage provider semantics
+### Storage provider语义
 
-An opaque provider-specific `Etag` value (`string`) _may_ be set by a storage provider as part of the grain state metadata populated when state was read. Some providers may choose to leave this as `null` if they do not use `Etag`s.
+不透明的，因provider而异（provider-specific）的`Etag`值（`string`）_可能_ 会被Storage provider设为Grain状态的一部分，并在读取时填进Grain状态的元数据里。
+有些Storage provider可能不使用`Etag`，并将其设为`null`。
 
-Any attempt to perform a write operation when the storage provider detects an `Etag` constraint violation _should_ cause the write `Task` to be faulted with transient error `Orleans.InconsistentStateException` and wrapping the underlying storage exception.
+当Storage provider检测到`Etag`的约束被违反时，所有试图进行写操作的尝试都 _应该_ 引发写入`Task`的瞬时错误`Orleans.InconsistentStateException`，并封装
+底层存储异常。
 
 ``` csharp
 public class InconsistentStateException : OrleansException
@@ -313,14 +330,18 @@ public class InconsistentStateException : OrleansException
 }
 ```
 
-Any other failure conditions from a storage operation _must_ cause the returned `Task` to be broken with an exception indicating the underlying storage issue. In many cases, this exception may be thrown back to the caller which triggered the storage operation by calling a method on the grain. It is important to consider whether or not the caller will be able to deserialize this exception. For example, the client might not have loaded the specific persistence library containing the exception type. For this reason, it is advisable to convert exceptions into exceptions which can be propagated back to the caller.
+任何其他来自存储操作的故障条件 _必须_ 引发返回的`Task`的中止，连同一个指示底层存储问题的异常。
+在很多情况下，这个异常会被抛回给调用者，调用者通过调用Grain上的方法触发了存储操作。
+考量调用者是否能够反序列化这个异常是很重要的。例如，客户端可能没有加载包含该异常类型的某个持久化库。
+出于这个原因，建议将异常转换为可以传播回给调用者的异常。
 
-### Data mapping
+### 数据映射
 
-Individual storage providers should decide how best to store grain state – blob (various formats / serialized forms) or column-per-field are obvious choices.
+Storage provider应该决定如何最好地存储Grain状态——blob（各种格式/序列化形式）或字段-列格式会是首选。
 
-### Registering a storage provider
+### 注册一个Storage provider
 
-The Orleans runtime will resolve a storage provider from the service provider (`IServiceProvider`) when a grain is created. The runtime will resolve an instance of `IGrainStorage`. If the storage provider is named, for example via the `[PersistentState(stateName, storageName)]` attribute, then a named instance of `IGrainStorage` will be resolved.
+当一个Grain被创建时，Orleans运行时将从Service provider（`IServiceProvider`）解析一个Storage provider。运行时将解析出一个`IGrainStorage`的实例。
+如果Storage provider被命名了，例如使用`[PersistentState(stateName, storageName)]`特性，那么`IGrainStorage`的一个具名实例将被解析。
 
-To register a named instance of `IGrainStorage`, use the `IServiceCollection.AddSingletonNamedService` extension method following the example of the [AzureTableGrainStorage provider here](https://github.com/dotnet/orleans/blob/af974d37864f85bfde5dc02f2f60bba997f2162d/src/Azure/Orleans.Persistence.AzureStorage/Hosting/AzureTableSiloBuilderExtensions.cs#L78).
+要注册`IGrainStorage`的具名实例，使用`IServiceCollection.AddSingletonNamedService`扩展方法，像[AzureTableGrainStorage的示例](https://github.com/dotnet/orleans/blob/af974d37864f85bfde5dc02f2f60bba997f2162d/src/Azure/Orleans.Persistence.AzureStorage/Hosting/AzureTableSiloBuilderExtensions.cs#L78)一样。

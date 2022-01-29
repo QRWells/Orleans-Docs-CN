@@ -104,14 +104,14 @@ public class ThermostatGrain : Grain, IThermostat, IThermostatControl
 ## Orleans运行时
 
 Orleans运行时实现了应用程序的编程模型。运行时的主要组件是*silo*，它负责托管Grains。
-通常情况下，一组Silos作为一个Cluster（集群）运行，以获得可扩展性和容错能力。
-当作为一个Cluster运行时，Silos间相互协调来分配工作，检测和恢复故障。
-运行时使Cluster中托管的Grains能够相互通信，就像它们在同一个进程中一样。
+通常情况下，一组Silos作为一个集群（Cluster）运行，以获得可扩展性和容错能力。
+当作为一个集群运行时，Silos间相互协调来分配工作，检测和恢复故障。
+运行时使集群中托管的Grains能够相互通信，就像它们在同一个进程中一样。
 
 除了核心编程模型外，Silo还为Grains提供了一套运行时服务，如计时器、提醒器（持续计时器）、持久化、事务、流等。
 更多细节见下面的[特性](#特性)。
 
-Web前端和其他外部客户端可以使用客户端库，来调用Cluster中的Grains，这个库能够自动管理网络通信。
+Web前端和其他外部客户端可以使用客户端库，来调用集群中的Grains，这个库能够自动管理网络通信。
 简单起见，客户端也可以和Silos在同一进程中共同托管。
 
 Orleans与.NET Standard 2.0及更高版本兼容，可以运行在Windows、Linux和macOS上，通过完整的.NET Framework或.NET Core。
@@ -163,15 +163,15 @@ Orleans中的安置过程是完全可配置的：开发者可以从一组开箱�
 
 应用的代码会随时间推移发生变化，以安全的方式升级在线生产系统将会是一个挑战，尤其是有状态的系统。
 Orleans中的Grain接口能够可选地进行版本控制。
-Cluster维护了一个映射，其中包括Cluster中哪个Silo上有哪些Grain实现，以及这些实现的版本。
+集群维护了一个映射，其中包括集群中哪个Silo上有哪些Grain实现，以及这些实现的版本。
 Orleans运行时会将这个版本信息与安置策略一起使用，以便在路由调用到Grains时做出安置决定。
-除了安全地更新处于版本控制中的Grains外，版本化还可以实现异构Clusters，即Silos各自可以使用不同的一套Grains实现。
+除了安全地更新处于版本控制中的Grains外，版本化还可以实现异构集群s，即Silos各自可以使用不同的一套Grains实现。
 更多信息，请参见[Grain版本化](grains/grain_versioning/grain_versioning.md)的文档。
 
 ### 弹性可扩展性&容错
 
-Orleans的设计使其可以弹性扩展。当一个Silo加入Cluster时，它能够接受新的（Grains的）激活，当一个Silo离开Cluster时（由于规模缩减或机器故障），在该Silo上激活的Grains将按需在其他Silos上重新激活。
-一个Orleans Cluster可以被缩减为一个Silo。实现弹性扩展的同时也实现了容错：集群可以自动检测并快速恢复故障。
+Orleans的设计使其可以弹性扩展。当一个Silo加入集群时，它能够接受新的（Grains的）激活，当一个Silo离开集群时（由于规模缩减或机器故障），在该Silo上激活的Grains将按需在其他Silos上重新激活。
+一个Orleans 集群可以被缩减为一个Silo。实现弹性扩展的同时也实现了容错：集群可以自动检测并快速恢复故障。
 
 ### 到处运行
 

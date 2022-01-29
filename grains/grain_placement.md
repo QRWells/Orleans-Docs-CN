@@ -1,84 +1,82 @@
 ---
-title: Grain Placement
+description: Grain Placement
 ---
 
-# Grain Placement
+# Grain安置
 
-Orleans ensures that when a grain call is made there is an instance of that grain available in memory on some server in the cluster to handle the request.
-If the grain is not currently active in the cluster, Orleans picks one of the servers to activate the grain on.
-This is called grain placement.
-Placement is also one way that load is balanced: even placement of busy grains helps to even the workload across the cluster.
+Orleans保证当一个Grain被调用时，集群中的某些服务器的内存中有可用的该Grain的实例用以处理请求。
+如果当前集群中Grain没有激活，Orleans会选择一个服务器来激活该Grain。这称为Grain安置。
+安置也是均衡负载的一种方式：繁忙Grains的均匀安置有助于平衡整个集群的工作负载。
 
-The placement process in Orleans is fully configurable: developers can choose from a set of out-of-the-box placement policies such as random, prefer-local, and load-based, or custom logic can be configured.
-This allows for full flexibility in deciding where grains are created.
-For example, grains can be placed on a server close to resources which they need to operate on or close to other grains which they communicate with.
-By default, Orleans will pick a random compatible server.
+Orleans的安置过程是完全可配置的：开发者可以从一组开箱即用的放置策略中选择，如随机、偏好本地和基于负载，也可以配置自定义逻辑。
+这使我们可以完全灵活地决定Grains的创建位置。
+例如，Grains可以被安置在靠近它们需要操作的资源的服务器上，或者靠近与它们通信的其他Grains。
+默认情况下，Orleans会选择一个随机的兼容的服务器。
 
-The placement strategy which Orleans uses can be configured globally or per-grain-class.
+Orleans使用的安置策略可以全局配置，也可以按Grain类配置。
 
-## In-built placement strategies
+## 内置的安置策略
 
-## Random placement
+### 随机安置
 
-A server is randomly selected from the set of compatible servers.
+从兼容的服务器中随机选择一个服务器。
 
-This placement strategy is configured by adding the `[RandomPlacement]` attribute to a grain.
+这个安置策略可以通过向Grain添加`[RandomPlacement]`特性来配置。
 
-## Local placement
+### 本地安置
 
-If the local server is compatible, select the local server, otherwise select a random server.
+如果本地服务器兼容，就选择本地服务器，否则随机选择一个服务器。
 
-This placement strategy is configured by adding the `[PreferLocalPlacement]` attribute to a grain.
+这个安置策略可以通过向Grain添加`[PreferLocalPlacement]`特性来配置。
 
-## Hash-based placement
+### 基于哈希的安置
 
-Hash the grain id to a non-negative integer and modulo it with the number of compatible servers.
-Select the corresponding server from list of compatible servers ordered by server address.
-Note that this is not guaranteed to remain stable as the cluster membership changes.
-Specifically, adding, removing, or restarting servers can alter the server selected for a given grain id.
-Because grains placed using this strategy are registered in the grain directory, this change in placement decision as membership changes typically does not have a noticeable effect.
+将Grain的ID哈希为一个非负整数，然后对兼容的服务器的数量取模，
+然后从按地址排列的兼容服务器列表中选择相应的服务器。
+注意，这并不保证在集群成员变化时仍然保持稳定。
+具体来说，添加、删除或重新启动服务器可以改变给定Grain ID所对应的服务器。
+因为使用这种策略安置的Grains是在Grain目录中注册的，这种随着成员变化而变化的安置选择通常不会有明显的影响。
 
-This placement strategy is configured by adding the `[HashBasedPlacement]` attribute to a grain.
+这个安置策略可以通过向Grain添加`[HashBasedPlacement]`特性来配置。
 
-## Activation-count-based placement
+### 基于激活数量的安置
 
-The intention of this placement strategy is to place new grain activations on the least heavily loaded server based on the number of recently busy grains.
-It includes a mechanism in which all servers periodically publish their total activation count to all other servers.
-The placement director then selects a server which is predicted to have the fewest activations by examining the most recently reported activation count and a making prediction of the current activation count based upon the recent activation count made by the placement director on the current server.
-The director selects a number of servers at random when making this prediction, in an attempt to avoid multiple separate servers overloading the same server.
-By default, two servers are selected at random, but this value is configurable via `ActivationCountBasedPlacementOptions`.
+这个安置策略的目的，是根据最近繁忙的Grain的数量，将新的Grain激活放在负载最小的服务器上。
+它包含一个机制，即所有服务器定期向所有其他服务器发布其总激活数。
+然后，安置管理器通过检查最近报告的激活数量，以及根据安置管理器对当前服务器的最近激活计数进行的预测，选择一个预计激活数最少的服务器。
+在进行预测时，管理器会随机选择一些服务器，以避免多个独立的服务器使同一服务器过载。
+默认情况下，会随机选择两个服务器，但这个数可以通过`ActivationCountBasedPlacementOptions`进行配置。
 
-This algorithm is based on the thesis [*The Power of Two Choices in Randomized Load Balancing* by Michael David Mitzenmacher](https://www.eecs.harvard.edu/~michaelm/postscripts/mythesis.pdf), and is also used in NGINX for distributed load balancing, as described in the article [*NGINX and the "Power of Two Choices" Load-Balancing Algorithm*](https://www.nginx.com/blog/nginx-power-of-two-choices-load-balancing-algorithm/).
+这个算法是基于Michael David Mitzenmacher的论文[*The Power of Two Choices in Randomized Load Balancing*](https://www.eecs.harvard.edu/~michaelm/postscripts/mythesis.pdf)，并且也在Nginx中用于分布式负载均衡，如文章[*NGINX and the "Power of Two Choices" Load-Balancing Algorithm*](https://www.nginx.com/blog/nginx-power-of-two-choices-load-balancing-algorithm/)中所述。
 
-This placement strategy is configured by adding the `[ActivationCountBasedPlacement]` attribute to a grain.
+这个安置策略可以通过向Grain添加`[ActivationCountBasedPlacement]`特性来配置。
 
+### 无状态worker的安置
 
-## Stateless worker placement
+这是[*无状态的worker* grains](stateless_worker_grains.md)使用的特殊安置材策略。
+这与本地安置的操作几乎相同，只是每个服务器可以有同一个的Grain的多个激活，并且Grains不在Grain目录中注册，因为没有必要。
 
-This is a special placement strategy used by [*stateless worker* grains](~/docs/grains/stateless_worker_grains.md).
-This operates almost identically to `PreferLocalPlacement` except that each server can have multiple activations of the same grain and the grain is not registered in the grain directory since there is no need.
+这个安置策略可以通过向Grain添加`[StatelessWorker]`特性来配置。
 
-This placement strategy is configured by adding the `[StatelessWorker]` attribute to a grain.
+## 配置默认安置策略
 
-## Configuring the default placement strategy
+Orleans将使用随机安置，除非默认值被覆盖。
+默认的安置策略可以通过在配置过程中注册一个`PlacementStrategy`的实现来覆盖：
 
-Orleans will use random placement unless the default is overridden.
-The default placement strategy can be overridden by registering an implementation of `PlacementStrategy` during configuration:
-
-``` C#
+``` csharp
 siloBuilder.ConfigureServices(services =>
   services.AddSingleton<PlacementStrategy, MyPlacementStrategy>());
 ```
 
-## Configuring the placement strategy for a grain
+## 为一个Grain配置默认安置策略
 
-The placment strategy for a grain type is configured by adding the appropriate attribute on the grain class.
-The relevant attributes are specified in the [in-built placement strategies](#in-built-placement-strategies) section.
+Grain类的安置策略是通过在Grain类上添加特性来配置的。
+相关的属性如[内置的安置策略](#内置的安置策略)部分所述。
 
-## Sample custom placement strategy
+## 自定义安置策略的示例
 
-First define a class which implements `IPlacementDirector` interface, requiring a single method.
-In this example we assume you have a function `GetSiloNumber` defined which will return a silo number given the guid of the grain about to be created.
+首先定义一个实现了`IPlacementDirector`接口的类，它需要实现一个方法。
+在这个例子中，我们假设你已经定义了一个函数`GetSiloNumber`，对于将要创建的Grain的GUID，它将返回Silo的编号。
 
 ``` csharp
 public class SamplePlacementStrategyFixedSiloDirector : IPlacementDirector
@@ -92,7 +90,8 @@ public class SamplePlacementStrategyFixedSiloDirector : IPlacementDirector
     }
 }
 ```
-You then need to define two classes to allow grain classes to be assigned to the strategy:
+
+接下来，为了把Grain类分配到策略中，你需要定义两个类：
 
 ```csharp
 [Serializable]
@@ -109,7 +108,9 @@ public sealed class SamplePlacementStrategyAttribute : PlacementAttribute
         }
 }
 ```
-Then just tag any grain classes you want to use this strategy with the attribute:
+
+然后，你只需要给想使用这个策略的任意Grain类加上特性注解：
+
 ``` csharp
 [SamplePlacementStrategy]
 public class MyGrain : Grain, IMyGrain
@@ -117,7 +118,9 @@ public class MyGrain : Grain, IMyGrain
     ...
 }
 ```
-And finally register the strategy when you build the SiloHost:
+
+最后，在你建立Silo时注册该策略：
+
 ``` csharp
 private static async Task<ISiloHost> StartSilo()
 {
@@ -138,4 +141,4 @@ private static void ConfigureServices(IServiceCollection services)
 }
 ```
 
-For a second simple example showing further use of the placement context, refer to the `PreferLocalPlacementDirector` in the [Orleans source repo](https://github.com/dotnet/orleans/blob/master/src/Orleans.Runtime/Placement/PreferLocalPlacementDirector.cs)
+关于另一个展示进一步使用安置上下文的简单例子，请参考[Orleans源代码](https://github.com/dotnet/orleans/blob/master/src/Orleans.Runtime/Placement/PreferLocalPlacementDirector.cs)中的`PreferLocalPlacementDirector`。

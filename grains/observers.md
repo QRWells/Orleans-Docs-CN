@@ -132,6 +132,6 @@ await friend.Subscribe(obj);
 
 `IGrainObserver`的实现是通过调用`IGrainFactory.CreateObjectReference`来注册的，每次调用该方法都会创建一个新的引用，指向该实现。
 Orleans将逐一执行发送到这些引用的请求，直到完成。
-观察者是不可重入的，因此对观察者的并发请求将不会被Orleans交错。
+观察者是不可重入的，因此对观察者的并发请求将不会被Orleans交叉执行。
 如果有多个观察者并发地接收请求，这些请求可以并行执行。
 观察者方法的执行不受诸如`[AlwaysInterleave]`或`[Reentrant]`等特性的影响：开发者不能自定义执行模型。

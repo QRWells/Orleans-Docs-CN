@@ -1,22 +1,22 @@
 ---
-layout: page
-title: One-way requests
+title: 单向请求
+description: 本节介绍单向请求的相关内容
 ---
 
-# One-way requests
+# 单向请求
 
-Grains execute requests (method calls) asynchronously and so all grain interface methods must return an asynchronous type, such as `Task`.
-By awaiting the completion of a task returned from a grain call, the caller is notified that the request has completed and any exceptions or return values can are propagated back to the caller so that they can be handled.
-There are cases where a caller merely wants to *notify* a grain that some event has happened and does not need to be informed of any exeptions or receive a completion signal.
-For these cases, Orleans supports *one-way requests*.
+Grain异步地方式执行请求（方法调用），因此所有Grain接口方法必须返回一个异步类型，如`Task`。
+通过等待从Grain调用中返回的`Task`的完成，调用者会被通知请求已经完成，任何异常或返回值都可以被传回调用者，以便它们可以被处理。
+在有些情况下，调用者只是想*通知*一个Grain某些事件已经发生，而不需要接收任何异常或完成信号。
+对于这些情况，Orleans支持*单向请求*。
 
-One-way requests return to the caller immediately and do not signal failure or completion.
-A one-way request does not even guarantee that the caller received the request.
-The primary benefit of a one-way request is that they save messaging costs associated with sending a response back to the caller and can therefore improve performance in some specialized cases.
-One-way requests are an advanced performance feature and should be used with care and only when a developer has determined that a one-way request is beneficial.
-It is recommended to prefer regular bi-directional requests, which signal completion and propagate errors back to callers.
+单向请求立即返回给调用者，并且不发出失败或完成的信号。
+单向请求甚至不能保证调用者收到请求。
+单向请求的主要优点是，其节省了向调用者发回响应的信息传递成本，因此在一些特殊情况下可以提高性能。
+单向请求是一种高级的性能特性，应该谨慎使用，只有当开发者确定单向请求是有益的。
+建议首选常规的双向请求，它发出完成信号并将错误传回给调用者。
 
-A request can be made one-way by marking the grain interface method with the `[OneWay]` attribute, like so:
+通过用`[OneWay]`特性标记Grain接口方法，可以使请求成为单向的，像这样：
 
 
 ``` csharp
@@ -27,4 +27,4 @@ public interface IOneWayGrain : IGrainWithGuidKey
 }
 ```
 
-One-way requests must return either `Task` or `ValueTask` and must not return generic variants of those types (`Task<T>` and `ValueTask<T>`).
+单向请求必须返回`Task`或`ValueTask`，并且不能返回这些类型的泛型（`Task<T>`和`ValueTask<T>`）。

@@ -1,42 +1,44 @@
 ---
-title: Replicated Grains
+title: 复制的Grain
+description: 
 ---
 
-## Replicated Grains
+## 复制的Grain
 
-Sometimes, there can be multiple instances of the same grain active, such as when operating a multi-cluster, and using the `[OneInstancePerCluster]` attribute. The JournaledGrain is designed to support replicated instances with minimal friction. It relies on *log-consistency providers* to run the necessary protocols to ensure all instances agree on the same sequence of events. In particular, it takes care of the following aspects: 
+<!-- Sometimes, there can be multiple instances of the same grain active, such as when operating a multi-cluster, and using the `[OneInstancePerCluster]` attribute. The JournaledGrain is designed to support replicated instances with minimal friction. It relies on *log-consistency providers* to run the necessary protocols to ensure all instances agree on the same sequence of events. In particular, it takes care of the following aspects:  -->
 
-* **Consistent Versions**: All versions of the grain state (except for tentative versions) are based on the same global sequence of events. In particular, if two instances see the same version number, then they see the same state.
+有时，同一Grain可能有多个实例处于活动状态，例如在操作多集群时，或者使用`[OneInstancePerCluster]`特性时。日志式Grain支持摩擦最小的复制实例。它依靠*日志一致性提供者*来运行必要的协议，以确保所有实例认同相同的事件序列。特别地，它照顾到以下几个方面：
 
-* **Racing Events**: Multiple instances can simultaneously raise an event. The consistency provider resolves this race and ensures everyone agrees on the same sequence.
+* **版本一致**: Grain状态的所有版本（除了临时版本）都基于相同的全局事件序列。特别地，如果两个实例看到的版本号相同，那么它们看到的状态就就相同。
 
-* **Notifications/Reactivity**: After an event is raised at one grain instance, the consistency provider not only updates storage, but also notifies all the other grain instances.
+* **竞争事件**: 多个实例可以同时引发一个事件。一致性提供者解决了这种竞争，确保每个实例都认同同一个序列。
 
-For a general discussion of the consistency model see our [TechReport](https://www.microsoft.com/en-us/research/publication/geo-distribution-actor-based-services/) and the [GSP paper](https://www.microsoft.com/en-us/research/publication/global-sequence-protocol-a-robust-abstraction-for-replicated-shared-state-extended-version/) (Global Sequence Protocol).
+* **通知/反应**: 在一个Grain实例引发一个事件后，一致性提供者不仅更新存储，而且还通知所有其他Grain实例。
 
-## Conditional Events
+关于一致性模型的一般讨论，见我们的[技术报告](https://www.microsoft.com/en-us/research/publication/geo-distribution-actor-based-services/)和[GSP论文](https://www.microsoft.com/en-us/research/publication/global-sequence-protocol-a-robust-abstraction-for-replicated-shared-state-extended-version/) (全球序列协议)。
 
-Racing events can be problematic if they have a conflict, i.e. should not both commit for some reason. For example, when withdrawing money from a bank account, two instances may independently determine that there are sufficient funds for a withdrawal, and issue a withdrawal event. But the combination of both events could overdraw. To avoid this, the JournaledGrain API supports a `RaiseConditionalEvent` method. 
+## 条件事件
+
+如果竞争事件有冲突，即由于某种原因不应该同时提交，那么就会出现问题。例如，当从银行账户取钱时，两个实例可能会独立判断有足够的资金用于取款，并发出取款事件。但是这两个事件的组合可能会透支。为了避免这种情况，日志式Grain API太提供了一个`RaiseConditionalEvent`方法。
 
 ```csharp
 bool success = await RaiseConditionalEvent(new WithdrawalEvent()  { ... });
 ```
 
-Conditional events double-check if the local version matches the version in storage. If not, it means the event sequence has grown in the meantime, which means this event has lost a race against some other event. In that case, the conditional event is *not* appended to the log, and `RaiseConditionalEvent` returns false.
+条件事件会检查本地版本是否与存储中的版本相符。如果不相符，这意味着事件序列在此期间已经增长，这意味着这个事件在与其他事件的竞争中失败了。在这种情况下，条件事件*不*附加到日志中，并且`RaiseConditionalEvent`返回false。
 
-This is the analogue of using e-tags with conditional storage updates, and likewise provides a simple mechanism to avoid committing conflicting events. 
+这是类似于使用电子标签的条件存储更新，同样也提供了一个简单的机制来避免提交冲突的事件。
 
-It is possible and sensible to use both conditional and unconditional events for the same grain, such as a `DepositEvent` and a `WithdrawalEvent`. Deposits need not be conditional: even if a `DepositEvent` loses a race, it does not have to be cancelled, but can still be appended to the global event sequence. 
+对同一个Grain同时使用有条件和无条件的事件是可能的，也是明智的，比如一个“存款事件”和一个“提款事件”。存款不需要条件：即使存款事件在竞争中失利，它也不必被取消，但仍然可以被追加到全局事件序列中。
 
-Awaiting the task returned by `RaiseConditionalEvent` is sufficient to confirm the event, i.e. it is not necessary to also call `ConfirmEvents`.
+等待由`RaiseConditionalEvent`返回的`Task`就足以确认该事件，也就是说，没有必要同时调用`ConfirmEvents`。
 
-## Explicit Synchronization
+## 显式同步化
 
-Sometimes, it is desirable to ensure that a grain is fully caught up with the latest version. This can be enforced by calling
+有时，需要确保一个Grain完全跟上最新的版本。这可以通过调用
 
 ```csharp
 await RefreshNow();
 ```
 
-which both (1) confirms all unconfirmed events, and (2) loads the latest version from storage.
-
+它完成了(1)确认所有未确认的事件，(2)从存储中加载最新版本。

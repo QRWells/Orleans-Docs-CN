@@ -1,6 +1,6 @@
 ---
 title: 复制的Grain
-description: 
+description: 本节介绍了Orleans事件溯源中的复制Grain
 ---
 
 ## 复制的Grain

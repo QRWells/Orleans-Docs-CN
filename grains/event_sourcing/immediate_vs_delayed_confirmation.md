@@ -35,7 +35,7 @@ description:
 可以通过检查以下属性来获知目前有哪些事件仍未确认：
 
 ```csharp
-IEnumerable<EventType> UnconfirmedEvents { get; }54
+IEnumerable<EventType> UnconfirmedEvents { get; }
 ```
 此外，由于由`State`属性返回的状态不包括未确认事件造成的影响，所以有一个替代属性 
 

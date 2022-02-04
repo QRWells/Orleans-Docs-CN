@@ -24,7 +24,6 @@ description:
 
 # 延时确认
 
-To improve availability and throughput in the situations mentioned above, grains can choose to do one or both of the following:
 为了提高上述情况下的可用性和吞吐量，Grain可以选择以下两种做法或其中之一：
 
 * 允许Grain引发事件而不等待确认。
@@ -36,7 +35,7 @@ To improve availability and throughput in the situations mentioned above, grains
 可以通过检查以下属性来获知目前有哪些事件仍未确认：
 
 ```csharp
-IEnumerable<EventType> UnconfirmedEvents { get; }
+IEnumerable<EventType> UnconfirmedEvents { get; }54
 ```
 此外，由于由`State`属性返回的状态不包括未确认事件造成的影响，所以有一个替代属性 
 

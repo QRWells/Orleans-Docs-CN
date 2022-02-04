@@ -1,11 +1,15 @@
-# Notifications
+---
+title: 通知
+description: 
+---
+# 通知
 
-It is often convenient to have the ability to react to state changes. 
-All callbacks are subject to Orleans' turn-based guarantees; see also the section on Concurrency Guarantees.
+通常来说，对状态变化做出反应的能力会使开发更加方便。
+所有的回调都受制于Orleans的基于回合的保证，参见并发性保证一节。
 
-## Tracking Confirmed State
+## 追踪已确认的状态
 
-To be notified of any changes to the confirmed state, `JournaledGrain` subclasses can override this method:
+为了在已确认状态发生变化时获得通知，`JournaledGrain`（日志式Grain）子类可以重写这个方法：
 
 ```csharp
 protected override void OnStateChanged()
@@ -14,17 +18,17 @@ protected override void OnStateChanged()
 }
 ```
 
-`OnStateChanged` is called whenever the confirmed state is updated, i.e. the version number increases. This can happen when
+`OnStateChanged`在已确认状态发生更新时被调用，也就是说，版本号的增长。这可能发生在：
 
-1. A newer version of the state was loaded from storage. 
-2. An event that was raised by this instance has been successfully written to storage.
-3. A notification message was received from some other instance.
+1. 从存储中加载了一个较新版本的状态。
+2. 由该实例引发的事件已成功写入存储。
+3. 收到了来自其他实例的通知消息。
 
-Note that since all grains initially have version zero, until the initial load from storage completes, this means that `OnStateChanged` is called whenever the initial load completes with a version larger than zero.
+请注意，由于从存储中初始加载完成时，所有Grains最初的版本都是0，这意味着，如果初始加载完成时版本号大于0，就会调用`OnStateChanged`。
 
-## Tracking Tentative State
+## 追踪暂定状态
 
-To be notified of any changes to the tentative state, `JournaledGrain` subclasses can override this method:
+为了在暂定状态发生变化时获得通知，`JournaledGrain`（日志式Grain）子类可以重写这个方法：
 
 ```csharp
 protected override void OnTentativeStateChanged()
@@ -33,5 +37,4 @@ protected override void OnTentativeStateChanged()
 }
 ```
 
-`OnTentativeStateChanged` is called whenever the tentative state changes, i.e. if the combined sequence  (ConfirmedEvents + UnconfirmedEvents) changes. In particular, a callback to `OnTentativeStateChanged()` always happens during `RaiseEvent`.
-
+`OnTentativeStateChanged`在暂定状态发生变化时被调用，即组合序列（已确认事件与未确认事件）（ConfirmedEvents + UnconfirmedEvents）发生变化时。特别是，对`OnTentativeStateChanged()`的回调总是发生在`RaiseEvent`期间。

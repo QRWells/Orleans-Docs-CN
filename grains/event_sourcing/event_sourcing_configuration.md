@@ -1,27 +1,28 @@
 ---
-title: Configuration
+title: 配置
+description: 
 ---
 
-# Configuration
+# 配置
 
-## Configuring Project References
+## 配置项目引用
 
-### Grain Interfaces
+### Grain接口
 
-As before, interfaces depend only on the `Microsoft.Orleans.Core` package, because the grain interface is independent of the implementation. 
+和之前一样，接口只依赖于`Microsoft.Orleans.Core`包，因为Grain接口与实现无关。
 
-### Grain Implementations
+### Grain实现
+ 
+日志式Grains需要派生自`JournaledGrain<S,E>`或`JournaledGrain<S>`，其定义在`Microsoft.Orleans.EventSourcing`包中。
 
-JournaledGrains need to derive from `JournaledGrain<S,E>` or `JournaledGrain<S>`, which is defined in the `Microsoft.Orleans.EventSourcing` package. 
+### 日志一致性提供者
 
-### Log-Consistency Providers
+我们目前内置三个日志一致性提供者（用于状态存储、日志存储和自定义存储）。这三个都在`Microsoft.Orleans.EventSourcing`包中。因此，所有的日志式Grains已经可以访问它们。关于这些提供者的作用以及它们的区别，请参见[内置的日志一致性提供者](log_consistency_providers.md)。
 
-We currently include three log-consistency providers (for state storage, log storage, and custom storage). All three are contained in the `Microsoft.Orleans.EventSourcing` package as well. Therefore, all Journaled Grains already have access to those. For a description of what these providers do and how they differ, see [Included Log-Consistency Providers](log_consistency_providers.md).
+## 集群配置
 
-## Cluster Configuration
-
-Log-consistency providers are configured just like any other Orleans providers.
-For example, to include all three providers (of course, you probably won't need all three), add this to the `<Globals>` element of the configuration file:
+日志一致性提供者的配置与其他Orleans中的提供者一样。
+例如，要使用所有三个提供者（当然，你可能只需要其中一个或两个），在配置文件的`<Globals>`标签中添加如下内容：
 
 ```xml
 <LogConsistencyProviders>
@@ -30,16 +31,17 @@ For example, to include all three providers (of course, you probably won't need 
   <Provider Type="Orleans.EventSourcing.CustomStorage.LogConsistencyProvider" Name="CustomStorage" />
 </LogConsistencyProviders>
 ```
-The same can be achieved programmatically. Moving forward to 2.0.0 stable, ClientConfiguration and ClusterConfiguration no longer exist! It has now been replaced by a ClientBuilder and a SiloBuilder (notice there is no cluster builder). 
+
+这也可以通过代码实现。2.0.0稳定版之后，`ClientConfiguration`和`ClusterConfiguration`已经不存在了！它现在被`ClientBuilder`和`SiloBuilder`所取代（注意，并没有集群的builder）。
 
 ```csharp
 builder.AddLogStorageBasedLogConsistencyProvider("LogStorage")
 ```
 
-## Grain Class Attributes
+## Grain类特性
 
-Each journaled grain class must have a `LogConsistencyProvider` attribute to specify the log-consistency provider. Some providers additionally require a `StorageProvider` attribute.
-Eg:
+每个有日志式Grain类必须有一个`LogConsistencyProvider`特性来指定日志一致性提供者。一些提供者还需要一个`StorageProvider`属性。
+例如:
 
 ```csharp
 [StorageProvider(ProviderName = "OrleansLocalStorage")]
@@ -48,20 +50,20 @@ public class EventSourcedBankAccountGrain : JournaledGrain<BankAccountState>, IE
 { ... }
 ```
 
-So here "`OrleansLocalStorage`" is being used for storing the grain state, where was "`LogStorage`" is the in-memory storage provider for EventSourcing events.
+可见这里"`OrleansLocalStorage`被用来存储Grain状态，而"`LogStorage`"是事件溯源事件的内存存储提供者。
 
-### LogConsistencyProvider Attributes
+### `LogConsistencyProvider`特性
 
-To specify the log-consistency provider, add a `[LogConsistencyProvider(ProviderName=...)]` attribute to the grain class, and give the name of the provider as configured by the Cluster Configuration. For example:
+要指定日志一致性提供者，请在Grain类中添加`[LogConsistencyProvider(ProviderName=...)]`属性，并给出集群配置中配置的提供者的名称。例如：
 
 ```csharp
 [LogConsistencyProvider(ProviderName = "CustomStorage")]
 public class ChatGrain : JournaledGrain<XDocument, IChatEvent>, IChatGrain, ICustomStorage { ... }
 ```
 
-### StorageProvider Attributes
+### `StorageProvider`特性
 
-Some log-consistency providers (including `LogStorage` and `StateStorage`) use a standard StorageProvider to communicate with storage. This provider is specified using a separate `StorageProvider` attribute, as follows:
+一些日志一致性提供者（包括`LogStorage`和`StateStorage`）使用标准StorageProvider来与存储进行通信。这个提供者使用另外的`StorageProvider`属性来指定，如下所示：
 
 ```csharp
 [LogConsistencyProvider(ProviderName = "LogStorage")]
@@ -69,9 +71,9 @@ Some log-consistency providers (including `LogStorage` and `StateStorage`) use a
 public class ChatGrain : JournaledGrain<XDocument, IChatEvent>, IChatGrain { ... }
 ```
 
-## Default Providers
+## 默认提供者
 
-It is possible to omit the `LogConsistencyProvider` and/or the `StorageProvider` attributes, if a default is specified in the configuration. This is done by using the special name `Default` for the respective provider. For example:
+如果配置中指定了默认值，可以省略`LogConsistencyProvider`和/或`StorageProvider`属性。这是通过使用特殊名称`Default`来实现的。例如：
 
 ```xml
 <LogConsistencyProviders>

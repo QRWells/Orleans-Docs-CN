@@ -1,50 +1,42 @@
 ---
-title: External Tasks and Grains
+title: 外部任务和Grains
 ---
 
 # External Tasks and Grains
 
-By design, any sub-Tasks spawned from grain code (for example, by using `await` or `ContinueWith` or `Task.Factory.StartNew`) will be dispatched on the same per-activation [TaskScheduler](https://docs.microsoft.com/dotnet/api/system.threading.tasks.taskscheduler) as the parent task and therefore inherit the same *single-threaded execution model* as the rest of grain code.
-This is the main point behind single threaded execution of grain turn based concurrency.
+在Orleans的设计里，任何从Grain代码中产生的子任务（例如，通过`await`、`ContinueWith`或`Task.Factory.StartNew`产生的）将在与父任务相同的 per-activation [TaskScheduler](https://docs.microsoft.com/dotnet/api/system.threading.tasks.taskscheduler)上进行调度，从而继承了与其他Grain代码相同的*单线程执行模型*。
+这是Grain基于回合的并发的单线程执行背后的基点。
 
-In some cases grain code might need to “break out” of the Orleans task scheduling model and “do something special”, such as explicitly pointing a `Task` to a different task scheduler or the .NET [`ThreadPool`](https://docs.microsoft.com/dotnet/api/system.threading.threadpool).
-An example of such cases is when grain code has to execute a synchronous remote blocking call (such as remote IO).
-Executing that blocking call in the grain context will block the grain and thus should never be made.
-Instead, the grain code can execute this piece of blocking code on the thread pool thread and join (`await`) the completion of that execution and proceed in the grain context.
-We expect that escaping from the Orleans scheduler will be a very advanced and seldom required usage scenario beyond the “normal” usage patterns.
+在某些情况下，Grain代码可能需要“突破”Orleans的任务调度模型去"做一些特别的事情"，比如将一个`Task`显式指向不同的任务调度器或.NET[线程池](https://docs.microsoft.com/dotnet/api/system.threading.threadpool)。
+例如，Grain代码必须执行一个同步的远程阻塞调用（如远程IO）。
+在Grain上下文中执行该阻塞调用将阻塞Grain，因此不应该这样做。
+相反，Grain代码可以在线程池线程上执行这段阻塞代码，并join（`await`）该执行的完成，并在Grain上下文中继续。
+我们期望逃逸出Orleans调度器将是一个非常高级的且很少需要的，超出“正常”使用模式的使用场景。
 
-## Task-based APIs
+## 基于Task的API
 
-1. `await`, `Task.Factory.StartNew` (see below), `Task.ContinueWith`, `Task.WhenAny`, `Task.WhenAll`, `Task.Delay` all respect the current task scheduler.
-That means that using them in the default way, without passing a different TaskScheduler, will cause them to execute in the grain context.
+1. `await`、`Task.Factory.StartNew`（见下文）、`Task.ContinueWith`、`Task.WhenAny`、`Task.WhenAll`、`Task.Delay`都遵循当前任务调度器。
+这意味着在不传递不同的任务调度器的情况下，以默认方式使用它们将使它们在Grain上下文中执行。
 
-1. Both `Task.Run` and the `endMethod` delegate of `Task.Factory.FromAsync` do *not* respect the current task scheduler.
-They both use the `TaskScheduler.Default` scheduler, which is the .NET thread pool task scheduler.
-Therefore, the code inside `Task.Run` and the `endMethod` in `Task.Factory.FromAsync` will *always* run on the .NET thread pool outside of the single-threaded execution model for Orleans grains, [as detailed here](http://blogs.msdn.com/b/pfxteam/archive/2011/10/24/10229468.aspx).
-However, any code after the `await Task.Run` or `await Task.Factory.FromAsync` will run back under the scheduler at the point the task was created, which is the grain's scheduler.
+2. `Task.Run`和`Task.Factory.FromAsync`的`endMethod`委托都*不*遵循当前任务调度器。它们都使用`TaskScheduler.Default`调度器，即.NET线程池任务调度器。因此，`Task.Run`内的代码和`Task.Factory.FromAsync`内的`endMethod`将*始终*运行在Orleans Grain的单线程执行模型之外的.NET线程池上，[详见这里](http://blogs.msdn.com/b/pfxteam/archive/2011/10/24/10229468.aspx)。但是，在`await Task.Run`或`await Task.Factory.FromAsync`之后的所有代码将在任务创建时的调度器下运行，也就是Grain的调度器。
 
-1. `ConfigureAwait(false)` is an explicit API to escape the current task Scheduler.
-It will cause the code after an awaited Task to be executed on the `TaskScheduler.Default` scheduler, which is the .NET thread pool, and will thus break the single-threaded execution of the grain.
-You should in general **never use `ConfigureAwait(false)` directly in grain code.**
+3. `ConfigureAwait(false)`是一个用来显式逃逸出当前任务的调度器的API。它将使等待任务后的代码在`TaskScheduler.Default`调度器上执行，也就是.NET线程池，因此会破坏Grain的单线程执行。一般来说，你应该**不直接在grain代码中使用`ConfigureAwait(false)`**。
 
-1. Methods with signature `async void` should not be used with grains.
-They are intended for graphical user interface event handlers.
-`async void` method can immediately crash the current process if they allow an exception to escape, with no way of handling the exception.
-This is also true for `List<T>.ForEach(async element => ...)` and any other method which accepts an `Action<T>`, since the asynchronous delegate will be coerced into an `async void` delegate.
+4. 签名为`async void`的方法不应该与Grain一起使用。它们是为GUI事件处理程序准备的。`async void`方法如果允许一个异常逃逸，就会立即使当前进程崩溃，从而无法处理这个异常。对于`List<T>.ForEach(async element => ...)`和任何其他接受`Action<T>`的方法也是如此，因为异步委托将被强制变成一个`async void`委托。
 
-### Task.Factory.StartNew and async delegates
+### Task.Factory.StartNew和async委托
 
-The usual recommendation for scheduling tasks in any C# program is to use `Task.Run` in favor of `Task.Factory.StartNew`.
-In fact, a quick google search on the use of `Task.Factory.StartNew()` will suggest [that it is dangerous](https://blog.stephencleary.com/2013/08/startnew-is-dangerous.html) and [that one should always favor `Task.Run`](https://devblogs.microsoft.com/pfxteam/task-run-vs-task-factory-startnew/).
-But if we want to stay in the grain's *single-threaded execution model* for our grain then we need to use it, so how do we do it correctly then?
-The danger when using `Task.Factory.StartNew()` is that it does not natively support async delegates.
-This means that this is likely a bug: `var notIntendedTask = Task.Factory.StartNew(SomeDelegateAsync)`.
-`notIntendedTask` is _not_ a task that completes when `SomeDelegateAsync` does.
-Instead, one should _always_ unwrap the returned task: `var task = Task.Factory.StartNew(SomeDelegateAsync).Unwrap()`.
+通常建议，在任何C#程序中调度任务应使用`Task.Run`而不是`Task.Factory.StartNew`。
+事实上，在快速谷歌一下`Task.Factory.StartNew()`的使用，会发现[它很危险](https://blog.stephencleary.com/2013/08/startnew-is-dangerous.html)并且[应该总是倾向于`Task.Run`](https://devblogs.microsoft.com/pfxteam/task-run-vs-task-factory-startnew/)。
+但是，如果我们想保持谷物的*单线程执行模式*，我们就需要用到它，那么我们如何正确地使用它呢？
+使用`Task.Factory.StartNew()`的风险在于，它并不支持原生的异步委托。
+这意味着这可能是一个bug： `var notIntendedTask = Task.Factory.StartNew(SomeDelegateAsync)`。
+`notIntendedTask` _不是_ 一个在`SomeDelegateAsync`完成时完成的任务。
+相反，我们应该 _总是_ 拆包返回的任务： `var task = Task.Factory.StartNew(SomeDelegateAsync).Unwrap()`。
 
-#### Example
+#### 例子
 
-Below is sample code that demonstrates the usage of `TaskScheduler.Current`, `Task.Run` and a special custom scheduler to escape from Orleans grain context and how to get back to it.
+下面的示例代码演示了`TaskScheduler.Current`、`Task.Run`和一个自定义调度器的用法，以摆脱Orleans Grain上下文，以及如何返回到它。
 
 ``` csharp
    public async Task MyGrainMethod()
@@ -91,12 +83,12 @@ Below is sample code that demonstrates the usage of `TaskScheduler.Current`, `Ta
    }
 ```
 
-#### Example - making a grain call from code that runs on a thread pool
+#### 例子 - 从运行在线程池上的代码中调用Grain
 
-Another scenario is a piece of grain code that needs to “break out” of the grain's task scheduling model and run on a thread pool (or some other, non-grain context), but still needs to call another grain.
-Grain calls can be made from non-grain contexts without extra ceremony.
+另一种情况是，一段Grain代码需要“脱离”Grain的任务调度模型，在线程池（或其他一些非Grain上下文）上运行，但仍然需要调用另一个Grain。
+Grain调用可以从非Grain上下文中进行，无需额外的操作。
 
-Below is code that demonstrates how a grain call can be made from a piece of code that runs inside a grain but not in the grain context.
+下面的代码演示了如何从运行在Grain内部但不在Grain上下文中的一段代码中进行Grain调用。
 
 ``` csharp
    public async Task MyGrainMethod()
@@ -126,24 +118,24 @@ Below is code that demonstrates how a grain call can be made from a piece of cod
    }
 ```
 
-## Working with libraries
+## 与其他库合作
 
-Some external libraries that your code is using might be using `ConfigureAwait(false)` internally.
-In fact, it is a good and correct practice in .NET to use `ConfigureAwait(false)` [when implementing general purpose libraries](https://msdn.microsoft.com/magazine/jj991977.aspx).
-This is not a problem in Orleans.
-As long as the code in the grain that invokes the library method is awaiting the library call with a regular `await`, the grain code is correct.
-The result will be exactly as desired – the library code will run continuations on the default scheduler (the value returned by `TaskScheduler.Default`, which does not guarantee that the continuations will definitely run on a `ThreadPool` thread as continuations are often inlined in the previous thread), while the grain code will run on the grain's scheduler.
+你的代码使用的一些外部库可能在其内部使用了`ConfigureAwait(false)`。
+事实上，在.NET中[实现通用库时](https://msdn.microsoft.com/magazine/jj991977.aspx)使用`ConfigureAwait(false)`是一种良好且正确的做法。
+但这在Orleans中不是问题。
+只要Grain中调用库方法的代码是用常规的`await`来等待库的调用，Grain代码就是正确的。
+结果将与预期完全一致——库的代码将在默认调度器（由`TaskScheduler.Default`返回的值，这并不能保证计算续体一定会在`ThreadPool`线程上运行，因为计算续体经常被内联在前一个线程中）上运行，而Grain代码将在Grain的调度器上运行。
 
-Another frequently-asked question is whether there is a need to execute library calls with `Task.Run` – that is, whether there is a need to explicitly offload the library code to `ThreadPool` (for grain code to do `Task.Run(() => myLibrary.FooAsync())`).
-The answer is no.
-There is no need to offload any code to `ThreadPool` except for the case of library code that is making a blocking synchronous calls.
-Usually, any well-written and correct .NET async library (methods that return `Task` and are named with an `Async` suffix) do not make blocking calls.
-Thus there is no need to offload anything to `ThreadPool` unless you suspect the async library is buggy or if you are deliberately using a synchronous blocking library.
+另一个常见问题是，是否需要用`Task.Run`来执行库的调用？也就是说，是否需要将库的代码显式转移（offload）到`ThreadPool`（对于Grain代码，`Task.Run(() => myLibrary.FooAsync())`）？
+答案是否定的。
+没有必要将任何代码转移到`ThreadPool`，除非是库的代码正在进行阻塞的同步调用。
+通常情况下，任何写得好的、正确的.NET异步库（返回`Task`并以`Async`后缀命名的方法）都不会进行阻塞调用。
+因此，除非你怀疑异步库有问题，或者你故意使用同步阻塞库，否则没有必要将任何东西转移到`ThreadPool`。
 
-## Deadlocks
+## 死锁
 
-Since grains execute in a *single threaded* fashion, it is possible to deadlock a grain by synchronously blocking in a way that would require multiple threads to unblock.
-This means that code which calls any of the following methods and properties can deadlock a grain if the provided tasks have not yet completed by the time the method or property is invoked:
+由于Grain是*单线程*执行的，所以有可能通过同步阻塞来使一个Grain陷入死锁，其需要多个线程来解除阻塞。
+这意味着，如果在调用方法或属性时，所提供的任务还没有完成，那么调用以下任何方法和属性的代码都会使Grain陷入死锁：
 
 * `Task.Wait()`
 * `Task.Result`
@@ -151,21 +143,21 @@ This means that code which calls any of the following methods and properties can
 * `Task.WaitAll(...)`
 * `task.GetAwaiter().GetResult()`
 
-These methods should be avoided in any high-concurrency service because they can lead to poor performance and instability by starving the .NET `ThreadPool` by blocking threads which could be performing useful work and requiring the .NET `ThreadPool` to inject additional threads so that they can be completed.
-When executing grain code, these methods, as mentioned above, can cause the grain to deadlock and therefore they should also be avoided in grain code.
+在任何高并发服务中都应该避免使用这些方法，它们会导致性能低下且不稳定，因为它们阻塞了可能正在进行有效工作的线程，并要求.NET`ThreadPool`注入额外的线程以便完成这些工作，从而使.NET`ThreadPool`陷入饥饿状态。
+在执行Grain代码时，如上所述，这些方法会导致Grain出现死锁，因此在Grain代码中也应避免使用这些方法。
 
-If there is some *sync-over-async* work which cannot be avoided, it is best to move that work to a separate scheduler.
-The simplest way to do this is to use `await Task.Run(() => task.Wait())` for example.
-Please note that it is strongly recommended to avoid *sync-over-async* work since, as mentioned above, it will cause your application's scalability and performance to suffer.
+如果有一些无法避免的*sync-over-async*的工作，最好将这些工作放到一个单独的调度器中。
+最简单的方法是以`await Task.Run(() => task.Wait())`为例。
+请注意，我们强烈建议避免*sync-over-async*工作，因为如上所述，它将导致你的应用的可扩展性和性能受到影响。
 
-## Summary: working with Tasks in Orleans
+## 总结：在Orleans中使用Task
 
-What are you trying to do?   | How to do it
-------------- | -------------
-Run background work on .NET thread-pool threads. No grain code or grain calls allowed.  |  `Task.Run`
-Run asynchronous worker task from grain code with Orleans turn-based concurrency guarantees ([see above](#taskfactorystartnew-and-async-delegates)). | `Task.Factory.StartNew(WorkerAsync).Unwrap()`
-Run synchronous worker task from grain code with Orleans turn-based concurrency guarantees. | `Task.Factory.StartNew(WorkerSync)`
-Timeouts for executing work items  | `Task.Delay` + `Task.WhenAny`
-Call an asynchronous library method |  `await` the library call
-Use `async`/`await` | The normal .NET Task-Async programming model. Supported & recommended  
-`ConfigureAwait(false)` | Do not use inside grain code. Allowed only inside libraries.
+| 你想做什么                                                                                                              | 如何实现                                      |
+| ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| 在.NET线程池的线程上运行后台工作。不允许有Grain代码或Grain调用。                                             `Task.Run` |
+| 在Grain代码中运行异步worker任务，并有Orleans的回合制并发保证（[见上文](#taskfactorystartnew和async委托)）。             | `Task.Factory.StartNew(WorkerAsync).Unwrap()` |
+| 在Grain代码中运行同步的worker任务，并有Orleans的回合制并发保证。                                                        | `Task.Factory.StartNew(WorkerSync)`           |
+| 执行任务的超时                                                                                                          | `Task.Delay` + `Task.WhenAny`                 |
+| 调用异步库方法                                                                                                          | `await`此异步方法                             |
+| 使用 `async`/`await`                                                                                                    | 普通的 .NET Task-Async编程模型。受支持且推荐  |
+| `ConfigureAwait(false)`                                                                                                 | 不要在Grain代码内使用。只允许在库内使用。     |

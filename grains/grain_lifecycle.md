@@ -1,8 +1,8 @@
 ---
-title: Grain Lifecycle
+title: Grain生命周期
 ---
 
-# Grain Lifecycle
+# Grain生命周期
 
 ## Overview
 

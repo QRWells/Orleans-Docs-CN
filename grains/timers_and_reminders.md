@@ -1,13 +1,8 @@
 ---
-description: 本节介绍了Orleans中的定时任务机制
+title: 定时器和提醒器
+description: Orleans运行时提供了两种机制，称为定时器和提醒器，使开发者能够为Grains指定定期动作。
 ---
-
-# 定时器和提醒器
-
-Orleans运行时提供了两种机制，称为定时器和提醒器，使开发者能够为Grains指定定期动作。
-
 # 定时器
-
 ## 简介
 
 **定时器**用于创建无需跨越多个Grain的激活（Grain的实例化）的周期性Grain行为。它与标准.NET中的`System.Threading.Timer`类本质上是相同的。

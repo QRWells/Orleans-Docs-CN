@@ -1,16 +1,16 @@
 ---
-title: Silo Lifecycle
+title: Silo生命周期
 ---
 
-# Silo Lifecycle
+# Silo生命周期
 
-# Overview
+# 总览
 
-Orleans silo uses an observable lifecycle (See [Orleans Lifecycle](~/docs/implementation/orleans_lifecycle.md)) for ordered startup and shutdown of Orleans systems as well as application layer components.
+Orleans silo使用一个可观察（observable）的生命周期（见[Orleans生命周期](/implementation/orleans_lifecycle.md)）来有序地启动和关闭Orleans系统以及应用层组件。
 
-## Stages
+## 生命周期的阶段
 
-Orleans Silo and Cluster Client use a common set of service lifecycle stages.
+Orleans Silo和集群客户端使用一套共同的服务生命周期的阶段。
 
 ```csharp
 public static class ServiceLifecycleStage
@@ -27,21 +27,21 @@ public static class ServiceLifecycleStage
 }
 ```
 
-- First - First stage in service's lifecycle
-- RuntimeInitialize - Initialize runtime environment.  Silo initializes threading.
-- RuntimeServices - Start runtime services.  Silo initializes networking and various agents.
-- RuntimeStorageServices - Initialize runtime storage.
-- RuntimeGrainServices - Start runtime services for grains.  This includes grain type management, membership service, and grain directory.
-- ApplicationServices – Application layer services.
-- BecomeActive – Silo joins the cluster.
-- Active – Silo is active in the cluster and ready to accept workload.
-- Last - Last stage in service's lifecycle
+- 起始 - 服务生命周期的起始阶段
+- 运行时初始化 - 初始化运行时环境。Silo初始化线程。
+- 运行时服务 - 启动运行时服务。Silo初始化网络和各种代理。
+- 运行时存储服务 - 初始化运行时存储。
+- 运行时Grain服务 - 启动Grain的运行时服务。 这包括Grain类型管理、成员服务和Grain目录。
+- 应用服务 – 应用层服务。
+- 预激活 – Silo加入集群。
+- 激活 – Silos在集群中处于活动状态，准备接受工作负载。
+- 最终 - 服务生命周期的最终阶段
 
-## Logging
+## 记录日志
 
-Due to the inversion of control, where participants join the lifecycle rather than the lifecycle having some centralized set of initialization steps, it’s not always clear from the code what the startup/shutdown order is.
-To help address this, logging has been added prior to silo startup to report what components are participating at each stage.
-These logs are recorded at Information log level on the `Orleans.Runtime.SiloLifecycleSubject` logger.  For instance:
+由于控制反转，导致这个过程是参与者加入生命周期，而不是生命周期进行一些集中的初始化步骤，所以并非总能从代码中明确启动/关闭的顺序如何。
+为了解决这个问题，在Silo启动前增加了日志记录，以报告每个阶段有哪些组件在参与。
+这些日志以信息级日志被记录在`Orleans.Runtime.SiloLifecycleSubject`日志器上。例如：
 
 _Information, Orleans.Runtime.SiloLifecycleSubject, “Stage 2000: Orleans.Statistics.PerfCounterEnvironmentStatistics, Orleans.Runtime.InsideRuntimeClient, Orleans.Runtime.Silo”_
 
@@ -49,15 +49,15 @@ _Information, Orleans.Runtime.SiloLifecycleSubject, “Stage 4000: Orleans.Runti
 
 _Information, Orleans.Runtime.SiloLifecycleSubject, “Stage 10000: Orleans.Runtime.Versions.GrainVersionStore, Orleans.Storage.AzureTableGrainStorage-Default, Orleans.Storage.AzureTableGrainStorage-PubSubStore”_
 
-Additionally, timing and error information are similarly logged for each component by stage.  For instance:
+此外，每个组件的时间和错误信息也同样按阶段进行记录。例如：
 
 _Information, Orleans.Runtime.SiloLifecycleSubject, “Lifecycle observer Orleans.Runtime.InsideRuntimeClient started in stage 2000 which took 33 Milliseconds.”_
 
 _Information, Orleans.Runtime.SiloLifecycleSubject, “Lifecycle observer Orleans.Statistics.PerfCounterEnvironmentStatistics started in stage 2000 which took 17 Milliseconds.”_
 
-## Silo Lifecycle Participation
+## 参与Silo生命周期
 
-Application logic can take part in the silo’s lifecycle by registering a participating service in the silo’s service container.  The service must be registered as an ILifecycleParticipant<ISiloLifecycle>.
+应用逻辑可以通过在Silo的服务容器中注册一个参与服务来参与Silo的生命周期。 该服务必须被注册为`ILifecycleParticipant<ISiloLifecycle>`。
 
 ```csharp
 public interface ISiloLifecycle : ILifecycleObservable
@@ -71,16 +71,16 @@ public interface ILifecycleParticipant<TLifecycleObservable>
 }
 ```
 
-Upon silo start, all participants (`ILifecycleParticipant<ISiloLifecycle>`) in the container will be given an opportunity to participate by calling their `Participate(..)` behavior.
-Once all have had the opportunity to participate, the silo’s observable lifecycle will start all stages in order.
+在Silo启动时，容器中的所有参与者（`ILifecycleParticipant<ISiloLifecycle>`）将有机会通过调用他们的`Participate(.)`行为来参与生命周期。
+一旦所有参与者都可以参与，Silo的可观察生命周期将按顺序启动所有阶段。
 
-## Example
+## 示例
 
-With the introduction of the silo lifecycle, bootstrap providers, which used to allow application developers to inject logic at the provider initialization phase, are no longer necessary, since application logic can now be injected at any stage of silo startup.
-Nonetheless, we added a ‘startup task’ façade to aid the transition for developers who had been using bootstrap providers.
-As an example of how components can be developed which take part in the silo’s lifecycle, we’ll look at the startup task façade.
+随着Silo生命周期的引入，引导提供者变得不再必要，它在过去用于在初始化阶段注入逻辑，因为现在可以在Silo启动的任何阶段注入应用逻辑。
+尽管如此，我们还是添加了一个“启动任务”封装，以帮助那些一直使用引导提供者的开发者进行过渡。
+作为一个如何开发参与Silo生命周期的组件的例子，我们来看看启动任务的封装：
 
-The startup task needs only to inherit from `ILifecycleParticipant<ISiloLifecycle>` and subscribe the application logic to the silo lifecycle at the specified stage.
+启动任务只需要继承自`ILifecycleParticipant<ISiloLifecycle>`，并在指定阶段将应用逻辑订阅给Silo生命周期。
 
 ```csharp
 class StartupTask : ILifecycleParticipant<ISiloLifecycle>
@@ -108,14 +108,14 @@ class StartupTask : ILifecycleParticipant<ISiloLifecycle>
 }
 ```
 
-From the above implementation, we can see that in the StartupTask’s `Participate(..)` call it subscribes to the silo lifecycle at the configured stage, passing the application callback rather than its own initialization logic.
+从上面的实现中，我们可以看到，在启动任务的`Participate(..)`调用中，它在指定的阶段订阅了Silo的生命周期，传入应用程序的回调，而非自己的初始化逻辑。
 
-Components that need to be initialized at a given stage would provide their own callback, but the pattern is the same.
+需要在特定阶段初始化的组件会提供自己的回调，但模式是一样的。
 
-Now that we have a StartupTask which will ensure that the application’s hook is called at the configured stage, we need to ensure that the StartupTask participates in the silo lifecycle.
-For this we need only register it in the container.
+现在我们有了一个启动任务，它将确保应用程序的钩子在指定的阶段被调用，我们需要确保启动任务参与到Silo的生命周期中。
+为此，我们只需要在容器中注册它。
 
-We do this with an extension function on the SiloHost builder.
+我们通过`SiloHost Builder`上的一个扩展函数来实现：
 
 ```csharp
 public static ISiloHostBuilder AddStartupTask(
@@ -133,4 +133,4 @@ public static ISiloHostBuilder AddStartupTask(
 }
 ```
 
-By registering the StartupTask in the silo’s service container as the marker interface `ILifecycleParticipant<ISiloLifecycle>`, this signals to the silo that this component needs to take part in the silo lifecycle.
+通过在Silo的服务容器中注册启动任务来作为标记接口`ILifecycleParticipant<ISiloLifecycle>`，就会向Silo发出信号，表明这个组件需要参与Silo的生命周期。

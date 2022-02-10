@@ -1,76 +1,67 @@
 ﻿---
-title: Transactions in Orleans 2.0
+title: Orleans 2.0中的事务
+description: Orleans支持针对持久性Grain状态的分布式ACID事务。
 ---
 
-# Orleans Transactions
+## 设置
 
-Orleans supports distributed ACID transactions against persistent grain state.
-
-## Setup
-
-Orleans transactions are opt-in.
-A silo must be configured to use transactions.
-If it is not, any calls to transactional methods on grains will receive an `OrleansTransactionsDisabledException`.
-To enable transactions on a silo, call `UseTransactions()` on the silo host builder.
+Orleans的事务是可选的。
+Silo必须被配置为使用事务。
+如果不进行配置，任何对Grain上的事务方法的调用都会收到`OrleansTransactionsDisabledException`。
+要在Silo上启用事务，请在Silo host builder上调用`UseTransactions()`。
 
 ```csharp
 var builder = new SiloHostBuilder().UseTransactions();
-
 ```
+### 事务状态存储
 
-### Transactional State Storage
+为了使用事务，用户需要配置一个数据存储。
+为了支持带有事务的各种数据存储，我们引入了存储抽象`ITransactionalStateStorage`。
+这个抽象是专门针对事务需求的，与一般的Grain物存储（`IGrainStorage`）不同。
+为了使用事务特化的存储，用户可以使用`ITransactionalStateStorage`的实现来配置他们的Silo，例如Azure（`AddAzureTableTransactionalStateStorage`）。
 
-To use transactions, the user needs to configure a data store.
-To support various data stores with transactions, the storage abstraction `ITransactionalStateStorage` has been introduced.
-This abstraction is specific to the needs of transactions, unlike generic grain storage (`IGrainStorage`).
-To use transaction-specific storage, the user can configure their silo using any implementation of `ITransactionalStateStorage`, such as Azure (`AddAzureTableTransactionalStateStorage`).
-
-Example:
+示例:
 
 ```csharp
-
 var builder = new SiloHostBuilder()
     .AddAzureTableTransactionalStateStorage("TransactionStore", options =>
     {
-        options.ConnectionString = ”YOUR_STORAGE_CONNECTION_STRING”);
+        options.ConnectionString = ”YOUR_STORAGE_CONNECTION_STRING”;
     })
     .UseTransactions();
-
 ```
 
-For development purposes, if transaction-specific storage is not available for the data store you need, an `IGrainStorage` implementation may be used instead.
-For any transactional state that does not have a store configured for it, transactions will attempt to fail over to grain storage using a bridge.
-Accessing transactional state via a bridge to grain storage will be less efficient and is not a pattern we intend to support long term, hence the recommendation that this only be used for development purposes.
+出于开发目的，如果你需要的数据存储没有事务特化的存储，可以使用`IGrainStorage`的实现来代替。
+对于任何没有配置存储的事务状态，事务将尝试使用桥接，失效转移到Grain存储。
+通过桥接到Grain存储来访问事务状态的效率较低，而且我们不打算长期支持这种模式，因此建议只用于开发目的。
 
-## Programming Model
+## 编程模型
 
-### Grain Interfaces
+### Grain接口
 
-For a grain to support transactions, transactional methods on a grain interface must be marked as being part of a transaction using the “Transaction” attribute.
-The attribute needs indicate how the grain call behaves in a transactional environment via the transaction options below:
+为了让Grain支持事务，Grain接口上的事务方法必须使用`[Transaction]`特性来标记为事务的一部分。
+该特性需要通过下面的事务选项来指示Grain调用在事务环境中的行为：
 
-- `TransactionOption.Create` - Call is transactional and will always create a new transaction context (i.e., it will start a new transaction), even if called within an existing transaction context.
-- `TransactionOption.Join` - Call is transactional but can only be called within the context of an existing transaction.
-- `TransactionOption.CreateOrJoin` - Call is transactional. If called within the context of a transaction, it will use that context, else it will create a new context.
-- `TransactionOption.Suppress` - Call is not transactional but can be called from within a transaction. If called within the context of a transaction, the context will not be passed to the call.
-- `TransactionOption.Supported` - Call is not transactional but supports transactions. If called within the context of a transaction, the context will be passed to the call.
-- `TransactionOption.NotAllowed` - Call is not transactional and cannot be called from within a transaction. If called within the context of a transaction, it will throw a `NotSupportedException`.
+- `TransactionOption.Create` - 事务性调用。其总是创建一个新的事务上下文（即启动一个新事务），即使是在现有的事务上下文中进行调用。
+- `TransactionOption.Join` - 事务性调用。但只能在现存事务的上下文中调用。
+- `TransactionOption.CreateOrJoin` - 事务性调用。如果在一个事务上下文中调用，它将使用该上下文，否则它将创建一个新的上下文。
+- `TransactionOption.Suppress` - 非事务性调用。可以从一个事务中调用。如果在一个事务上下文中调用，上下文将不会被传递给调用。
+- `TransactionOption.Supported` - 非事务性调用。其支持事务。如果在一个事务上下文中调用，上下文将被传递给调用。
+- `TransactionOption.NotAllowed` - 非事务性调用。不能从一个事务中调用。如果在一个事务的上下文中调用，它将抛出一个`NotSupportedException`。
 
-Calls can be marked as “Create”, meaning the call will always start its own transaction.
-For example, the Transfer operation in the ATM grain below will always start a new transaction which involves the two referenced accounts.
+调用可以被标记为“创建”，这意味着该调用将总是启动它自己的事务。
+例如，下面的ATM Grain中的转账操作将总是启动一个新的事务，包含到两个用到的账户。
 
 ```csharp
-
 public interface IATMGrain : IGrainWithIntegerKey
 {
     [Transaction(TransactionOption.Create)]
     Task Transfer(Guid fromAccount, Guid toAccount, uint amountToTransfer);
 }
-
 ```
 
-The transactional operations Withdraw and Deposit on the account grain are marked “Join”, indicating that they can only be called within the context of an existing transaction, which would be the case if they were called during `IATMGrain.Transfer(…)`.
-The `GetBalance` call is marked `CreateOrJoin` so it can be called from within an existing transaction, like via `IATMGrain.Transfer(…)`, or on its own.
+账户Grain上的事务操作`Withdraw`和`Deposit`被标记为`TransactionOption.Join`，表明它们只能在现有事务上下文中被调用，即在`IATMGrain.Transfer(...)`中被调用。
+`GetBalance`的调用被标记为`TransactionOption.CreateOrJoin`，所以它可以从现有的事务中调用，比如通过`IATMGrain.Transfer(...)`，或者单独调用。
 
 ```csharp
 
@@ -88,31 +79,28 @@ public interface IAccountGrain : IGrainWithGuidKey
 
 ```
 
-#### Important Considerations
+#### 重要考虑
 
-Please be aware that OnActivateAsync could NOT be marked as transactional as any such call requires a proper setup before the call. It does exist only for the grain application API. This means that an attempt to read transactional state as part of these methods will raise an exception in the runtime.
+注意，`OnActivateAsync`不能被标记为事务性调用，因为所有这样的调用都需要在调用前进行适当的设置。它只存在于Grain应用API。这意味着，在这些方法中试图读取事务性状态，会在运行时引发异常。
 
-### Grain Implementations
+### Grain实现
 
-A grain implementation needs to use an `ITransactionalState` facet (see Facet System) to manage grain state via ACID transactions.
+Grain实现需要使用`ITransactionalState`分面（见分面系统）来通过ACID事务管理Grain状态。
 
 ```csharp
-
     public interface ITransactionalState<TState>
         where TState : class, new()
     {
         Task<TResult> PerformRead<TResult>(Func<TState, TResult> readFunction);
         Task<TResult> PerformUpdate<TResult>(Func<TState, TResult> updateFunction);
     }
-
 ```
 
-All read or write access to the persisted state must be performed via synchronous functions passed to the transactional state facet.
-This allows the transaction system to perform or cancel these operations transactionally.
-To use a transactional state within a grain, one only needs to define a serializable state class to be persisted and to declare the transactional state in the grain’s constructor with a `TransactionalState` attribute. The latter declares the state name and (optionally) which transactional state storage to use (see Setup).
+所有对持久化状态的读写访问必须通过传递给事务状态分面的同步函数来执行。
+这允许事务系统以事务方式执行或取消这些操作。
+要在Grain中使用事务状态，只需要定义一个可序列化的状态类，并在Grain的构造函数中用`TransactionalState`特性来声明事务状态。后者声明了状态名称和（可选的）使用的事务状态存储（见[设置](#设置)）。
 
 ```csharp
-
 [AttributeUsage(AttributeTargets.Parameter)]
 public class TransactionalStateAttribute : Attribute
 {
@@ -121,13 +109,11 @@ public class TransactionalStateAttribute : Attribute
       …
     }
 }
-
 ```
 
-Example:
+示例:
 
 ```csharp
-
 public class AccountGrain : Grain, IAccountGrain
 {
     private readonly ITransactionalState<Balance> balance;
@@ -154,36 +140,33 @@ public class AccountGrain : Grain, IAccountGrain
         return this.balance.PerformRead(x => x.Value);
     }
 }
-
 ```
 
-In the above example, the attribute `TransactionalState` is used to declare that the ‘balance’ constructor argument should be associated with a transactional state named “balance”.
-With this declaration, Orleans will inject an `ITransactionalState` instance with a state loaded from the transactional state storage named "TransactionStore" (see Setup).
-The state can be modified via `PerformUpdate` or read via `PerformRead`.
-The transaction infrastructure will ensure that any such changes performed as part of a transaction, even among multiple grains distributed over an Orleans cluster, will either all be committed or all be undone upon completion of the grain call that created the transaction (`IATMGrain.Transfer` in the above examples).
+在上面的例子中，`[TransactionalState]`特性被用来声明构造函数参数`balance`应该与一个名为`"balance"`的事务状态相关。
+有了这个声明，Orleans就会注入一个`ITransactionalState`实例，其状态是从名为`"TransactionStore"`的交易状态存储中加载的（见设置）。
+该状态可以通过`PerformUpdate`修改，或者通过`PerformRead`读取。
+事务基础设施将确保任何此类更改都会作为事务的一部分执行，即使是分布在Orleans集群上的多个Grain，也将全部提交，或者在创建事务的Grain调用完成后全部撤销（上述例子中的`IATMGrain.Transfer`）。
 
-### Calling Transactions
+### 调用事务
 
-Transactional methods on a grain interface are called like any other grain call.
+Grain接口上的事务性方法可以像其他Grain调用一样被调用。
 
 ```csharp
-
     IATMGrain atm = client.GetGrain<IATMGrain>(0);
     Guid from = Guid.NewGuid();
     Guid to = Guid.NewGuid();
     await atm.Transfer(from, to, 100);
     uint fromBalance = await client.GetGrain<IAccountGrain>(from).GetBalance();
     uint toBalance = await client.GetGrain<IAccountGrain>(to).GetBalance();
-
 ```
 
-In the above calls, an ATM grain is used to transfer 100 units of currency from one account to another.
-After the transfer is complete, both accounts are queried to get their current balance.
-The currency transfer as well as both account queries are performed as ACID transactions.
+在上述调用中，使用ATM Grain将100单位的货币从一个账户转到另一个账户。
+转账完成后，查询两个账户，以获得其当前余额。
+货币转账以及两个账户的查询都是作为ACID事务执行的。
 
-As seen in the above example, transactions can return values within a task, like other grain calls, but upon call failure they will not throw application exceptions, but rather an `OrleansTransactionException` or `TimeoutException`.
-If the application throws an exception during the transaction and that exception causes the transaction to fail (as opposed failing because of other system failures), the application exception will be the inner exception of the `OrleansTransactionException`.
-If a transaction exception is thrown of type `OrleansTransactionAbortedException`, the transaction failed and can be retried.
-Any other exception thrown indicates that the transaction terminated with an unknown state.
-Since transactions are distributed operations, a transaction in an unknown state could have succeeded, failed, or still be in progress.
-For this reason, it’s advisable to allow a call timeout period (`SiloMessagingOptions.ResponseTimeout`) to pass, to avoid cascading aborts, before verifying the state or retrying the operation.
+正如在上面的例子中所看到的，事务可以在一个`Task`中返回值，就像其他Grain调用一样，但是当调用失败时，它们不会抛出应用程序异常，而是抛出`OrleansTransactionException`或 `TimeoutException`。
+如果应用程序在事务过程中抛出一个异常，并且该异常导致事务失败（而不是因为其他系统故障而失败），应用程序的异常将是`OrleansTransactionException`的内部异常。
+如果抛出一个`OrleansTransactionAbortedException`类型的事务异常，说明该事务失败且可以重试。
+抛出的任何其他异常都表明事务在未知状态下终止了。
+由于事务是分布式操作，处于未知状态的事务可能已经成功、失败或仍在进行中。
+出于这个原因，在验证状态或重试操作之前，最好容许调用超时（`SiloMessagingOptions.ResponseTimeout`），以避免级联中止。

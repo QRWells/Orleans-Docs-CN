@@ -1,13 +1,15 @@
-# Backward compatibility guidelines
+---
+title: 向后兼容指南
+description: 
+---
 
-Writing backward compatible code can be hard and difficult to test.
+编写向后兼容的代码可能很困难，而且难以测试。
 
-## Never change the signature of existing methods
+## 不要改变现有方法的签名
 
-Because of the way on how Orleans serializer work, you should never change the signature
-of existing methods.
+由于Orleans序列化器的工作方式，你不应该改变现有方法的签名。
 
-The following example is correct:
+下面的例子是正确的：
 
 ``` cs
 [Version(1)]
@@ -29,7 +31,8 @@ public interface IMyGrain : IGrainWithIntegerKey
 }
 ```
 
-This is not correct:
+这个则不正确:
+
 ``` cs
 [Version(1)]
 public interface IMyGrain : IGrainWithIntegerKey
@@ -47,9 +50,11 @@ public interface IMyGrain : IGrainWithIntegerKey
 }
 ```
 
-**NOTE**: you should not do this change in your code, as it's an example of a bad practice that leads to very bad side-effects.
-This is an example of what can happen if you just rename the parameter names: let's say
-that we have the two following interface version deployed in the cluster:
+**注意**：你不应该在你的代码中做这样的改变，因为这个例子展示了导致非常糟糕的副作用的错误做法。
+
+这个例子解释了如果你只是重命名参数名称会发生什么：
+假设我们在集群中部署了以下两个接口版本：
+
 ``` cs
 [Version(1)]
 public interface IMyGrain : IGrainWithIntegerKey
@@ -67,21 +72,22 @@ public interface IMyGrain : IGrainWithIntegerKey
 }
 ```
 
-This methods seems identical. But if the client was called with V1, and the request is
-handled by a V2 activation:
+这两个方法似乎是相同的。但是，如果客户端是用V1调用的，而请求是由V2的激活处理的：
+
 ``` cs
 var grain = client.GetGrain<IMyGrain>(0);
-var result = await grain.Substract(5, 4); // Will return "-1" instead of expected "1"
+var result = await grain.Substract(5, 4); // 会返回"-1"而不是期望的"1"
 ```
 
-This is due to how the internal Orleans serializer works.
+这是由于内部的Orleans序列化器的工作方式造成的。
 
-## Avoid changing existing method logic
+## 避免改变现有方法的逻辑
 
-It can seems obvious, but you should be very careful when changing the body of an existing method.
-Unless you are fixing a bug, it is better to just add a new method if you need to modify the code.
+这似乎很显然，但是当你修改一个现有方法的方法体时，你要非常小心。
+除非你要修复一个错误，否则如果你需要修改代码，最好是直接添加一个新方法。
 
-Example:
+示例:
+
 ``` cs
 // V1
 public interface MyGrain : IMyGrain
@@ -113,11 +119,12 @@ public interface MyGrain : IMyGrain
 }
 ```
 
-## Do not remove methods from grain interfaces
+## 不要从Grain接口中移除方法
 
-Unless you are sure that they are no longer used, you should not remove methods from the grain interface.
-If you want to remove methods, this should be done in 2 steps:
-1. Deploy V2 grains, with V1 method marked as `Obsolete`
+除非你确定方法不再被使用，否则你不应该从Grain接口中移除方法。
+如果你想移除方法，这应该分两步进行：
+
+1. 部署V2的Grain，同时将V1的方法标记为`Obsolete`：
 
   ``` cs
   [Version(1)]
@@ -140,7 +147,7 @@ If you want to remove methods, this should be done in 2 steps:
   }
   ```
 
-2. When you are sure that no V1 calls are made (effectively V1 is no longer deployed in the running cluster), deploy V3 with V1 method removed
+2. 当你确定不再有V1的调用时（实际上V1不再部署在运行的集群中），部署V3并删除V1方法。
   ``` cs
   [Version(3)]
   public interface IMyGrain : IGrainWithIntegerKey

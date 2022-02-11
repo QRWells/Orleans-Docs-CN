@@ -27,7 +27,7 @@
   * [外部任务与Grains](grains/external_tasks_and_grains.md)
   * [拦截器](grains/interceptors.md)
   * [Grain服务](grains/grainservices.md)
-  * [无状态的Worker Grains](grains/stateless_worker_grains.md)
+  * [无状态Worker Grains](grains/stateless_worker_grains.md)
   * [取消令牌](grains/cancellation_tokens.md)
   * [事务](grains/transactions.md)
   * [单向请求](grains/oneway.md)

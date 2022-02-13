@@ -1,14 +1,16 @@
-# Deploy new version of grains
+---
+title: 部署新版本的Grain
+description:
+---
 
-### Rolling upgrade
+### 滚动升级
 
-In this method you deploy newer silos directly on your environment.
-This is the simplest method, but it can be difficult to interrupt an ongoing deployment
-and to rollback.
+使用这种方法，你可以直接在你的环境上部署较新的Silo。
+这是最简单的方法，但要中断正在进行的部署以及回滚可能很困难。
 
-Recommended configuration:
-- `DefaultCompatibilityStrategy` set to `BackwardCompatible`
-- `DefaultVersionSelectorStrategy` set to `AllCompatibleVersions`
+推荐的配置:
+- `DefaultCompatibilityStrategy`设置为`BackwardCompatible`
+- `DefaultVersionSelectorStrategy`设置为`AllCompatibleVersions`
 
 ```csharp
 var silo = new SiloHostBuilder()
@@ -21,22 +23,23 @@ var silo = new SiloHostBuilder()
   [...]
 ```
 
-When using this configuration, "old" clients will be able to talk to activations
-on both versions of silos. Newer clients and silos will only trigger new activations
-on newer silos.
+当使用这种配置时，"老"客户端将能够与两个版本的Silo上的激活进行对话。
+而较新的客户端和Silo将只触发较新的Silo上的新激活。
 
 ![Rolling gif](rolling.gif)
 
-### Using a staging environment
+### 使用staging环境
 
 In this method you will need a second environment (Staging environment),
 on which you will deploy newer silos before stopping the Production environment.
 The Production and the Staging silos and clients will be __part of the same
 cluster__. It is important that silos from both environment can talk to each other.
+使用这种方法，你将需要第二个环境（staging环境），在停止生产环境之前，你将在该环境中部署较新的Silo。
+生产和staging环境中的Silo和客户端将是 __同一个集群的一部分__。重要的是，两个环境中的Silo都能相互对话。
 
-Recommended configuration:
-- `DefaultCompatibilityStrategy` set to `BackwardCompatible`
-- `DefaultVersionSelectorStrategy` set to `MinimumVersion`
+推荐的配置:
+- `DefaultCompatibilityStrategy`设置为`BackwardCompatible`
+- `DefaultVersionSelectorStrategy`设置为`MinimumVersion`
 
 ```csharp
 var silo = new SiloHostBuilder()
@@ -49,21 +52,13 @@ var silo = new SiloHostBuilder()
   [...]
 ```
 
-Suggested deployment steps:
+建议的部署步骤：
 
-1. "V1" silos and clients are deployed and are running in the Production slot.
-2. "V2" silos and clients begin to start in the Staging slot. They will join the
-same cluster as the Production slot. No "V2" activations will be created so far.
-3. Once the deployment in the Staging slot is finished, the developer can redirect
-some traffic to the V2 clients (smoke tests, targeted beta users, etc.). This will
-create V2 activations, but since Grains are backward compatible and all silos
-are in the same cluster, no duplicate activations will be created.
-4. If the validation is successful, proceed to VIP swap.
-  If not, you can safely shutdown the Staging cluster: existing V2 activations will be
-  destroyed and V1 activations will be created if needed.
-5. V1 activations will naturally "migrate" to V2 silos eventually. You can safely shutdown
-V1 silos.
+1. "V1" Silo和客户端已经部署，并在生产环境中运行。
+2. "V2" Silo和客户开始在Staging环境启动。他们将加入与生产环境相同的集群。到目前为止，仍未创建"V2"的激活。
+3. 一旦在Staging环境中的部署完成，开发者可以将一些流量重定向到V2客户端（灰度测试，面向测试用户等）。这将创建V2激活，但由于Grains是向后兼容的，而且所有Silo都在同一个集群中，因此不会创建重复的激活。
+4. 如果验证成功，就可以继续进行VIP swap。否则，你可以安全地关闭Staging集群：现有的V2激活将被销毁，如果需要，V1激活将被创建。
+5. V1的激活最终会自然"迁移"到V2的Silo。你可以安全地关闭V1Silo。
 
-> [!WARNING]
-> Remember that stateless workers are not versioned and that streaming agents will
-> also start in the staging environment.
+> [!警告]
+> 请记住，无状态worker是没有版本的，流的代理也将在暂存环境中启动。

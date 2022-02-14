@@ -43,7 +43,7 @@
 * [快速入门](streaming/streams_quick_start.md)
 * [流编程APIs](streaming/streams_programming_APIs.md)
 * [流提供者](streaming/stream_providers.md)
-* [关于流的"why?"](streaming/streams_why.md)
+* [为什么是Orleans流？](streaming/streams_why.md)
 
 ## 托管
 * [客户端](host/client.md)

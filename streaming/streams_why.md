@@ -1,71 +1,72 @@
 ---
-title: Why Orleans Streams?
+title: 为什么是Orleans流?
 ---
 
-# Why Orleans Streams?
+现在已经有大量的技术让你能够建立流处理系统。
+这些技术包括**持久存储流数据的系统**（例如，[Event Hubs](http://azure.microsoft.com/en-us/services/event-hubs/)和[Kafka](http://kafka.apache.org/)）和在流数据上表达**计算操作**的系统（例如，[Azure Stream Analytics](http://azure.microsoft.com/en-us/services/stream-analytics/)、[Apache Storm](https://storm.apache.org/)和[Apache Spark Streaming](https://spark.apache.org/streaming/)）。这些都是优秀的系统，可以让你建立高效的数据流处理管线。
 
-There are already a wide range of technologies that allow you to build stream processing systems.
-Those include systems to **durably store stream data** (e.g., [Event Hubs](http://azure.microsoft.com/en-us/services/event-hubs/) and [Kafka](http://kafka.apache.org/)) and systems to express **compute operations** over stream data (e.g., [Azure Stream Analytics](http://azure.microsoft.com/en-us/services/stream-analytics/), [Apache Storm](https://storm.apache.org/), and [Apache Spark Streaming](https://spark.apache.org/streaming/)). Those are great systems that allow you to build efficient data stream processing pipelines.
+## 现有系统的局限性
 
-### Limitations of Existing Systems
-However, those systems are not suitable for **fine-grained free-form compute over stream data**. The Streaming Compute systems mentioned above all allow you to specify a **unified data-flow graph of operations that are applied in the same way to all stream items**. This is a powerful model when data is uniform and you want to express the same set of transformation, filtering, or aggregation operations over this data.
-But there are other use cases where you need to express fundamentally different operations over different data items. And in some of them as part of this processing you occasionally need to make an external call, such as invoke some arbitrary REST API. The unified data-flow stream processing engines either do not support those scenarios, support them in a limited and constrained way, or are inefficient in supporting them. This is because they are inherently optimized for a **large volume of similar items, and usually limited in terms of expressiveness, processing**. Orleans Streams target those other scenarios.
+然而，这些系统并不适合**流数据的细粒度自由计算**。上面提到的流计算系统都允许你指定一个**统一的操作的数据流图，这些操作以同样的方式应用于所有流项目**。当数据是均匀的，并且你想在这些数据上表达同一套转换、过滤或聚合操作时，这是一个强大的模型。
+但是还有一些用例，你需要在不同的数据项上表达本质上不同的操作。而在其中一些情况下，作为处理的一部分，你偶尔需要进行外部调用，比如说调用一些任意的REST API。统一的数据流处理引擎要么不支持这些场景，要么以有限的和受限制的方式支持这些场景，要么在支持这些场景时效率很低。这是因为它们本质上是为**大量的类似项目而优化的，而且通常在表达能力、处理能力方面受到限制**。Orleans流则支持这种场景。
 
-### Motivation
-It all started with requests from Orleans users to support returning a sequence of items from a grain method call. As you can imagine, that was only the tip of the iceberg. They actually needed much more than that.
+## 动机
 
-A typical scenario for Orleans Streams is when you have per user streams and you want to perform **different processing for each user**, within the context of an individual user. We may have millions of users but some of them are interested in weather and can subscribe to weather alerts for a particular location, while some are interested in sports events; somebody else is tracking status of a particular flight. Processing those events requires different logic, but you don't want to run two independent instances of stream processing. Some users are interested in only a particular stock and only if a certain external condition applies, a condition that may not necessarily be part of the stream data (and thus needs to be checked dynamically at runtime as part of processing).
+这一切都源于Orleans用户的要求，即支持从Grain方法调用中返回一个物项序列。可以想象，这仅仅是冰山一角。他们实际上需要的远不止这些。
 
-Users change their interests all the time, hence their subscriptions to specific streams of events come and go dynamically, thus **the streaming topology changes dynamically and rapidly**. On top of that, **the processing logic per user evolves and changes dynamically as well, based on user state and external events**. External events may modify the  processing logic for a particular user. For example, in a game cheating detection system, when a new way to cheat is discovered the processing logic needs to be updated with the new rule to detect this new violation. This needs to be done of course **without disrupting the ongoing processing pipeline**. Bulk data-flow stream processing engines were not built to support such scenarios.
+Orleans流的一个典型场景是，当你有用户的流，你想**为每个用户执行不同的处理**，在单个用户的背景下。我们可能有数以百万计的用户，但其中有些人对天气感兴趣，可以订阅某个特定地点的天气警报，而有些人对体育赛事感兴趣；还有人在跟踪某个特定航班的状态。处理这些事件需要不同的逻辑，但你不希望运行两个独立的流处理实例。有些用户只对某只股票感兴趣，而且只对某个外部条件感兴趣，这个条件不一定是流数据的一部分（因此需要在运行时作为处理的一部分动态地检查）。
 
-It goes almost without saying that such a system has to run on a number of network-connected machines, not on a single node. Hence, the processing logic has to be distributed in a scalable and elastic manner across a cluster of servers.
+用户一直在改变他们的兴趣，因此他们对特定事件流的订阅是动态的，因此**流拓扑结构是动态的且变化迅速**。在此基础上，**每个用户的处理逻辑也会根据用户状态和外部事件而动态变化**。外部事件可能会修改某个特定用户的处理逻辑。例如，在一个游戏作弊检测系统中，当发现一种新的作弊方式时，处理逻辑就需要用新的规则来更新，以检测这种新的作弊行为。当然，这需要在**不破坏正在进行的处理管线的情况下**完成。批量数据流处理引擎不是为支持这种情况而建立的。
 
-### New Requirements
+不须说，这样的系统必须运行在一些构成网络的机器上，而非在一个单一的节点上。因此，处理逻辑必须以可扩展和弹性的方式分布在一个服务器集群中。
 
-We identified 4 basic requirements for our Stream Processing system that will allow it to target the above scenarios.
+## 新的需求
 
-1. Flexible stream processing logic
-2. Support for highly dynamic topologies
-3. Fine-grained stream granularity
-4. Distribution
+我们为我们的流处理系统确定了4个基本需求，使其能够应对上述场景。
 
-#### Flexible stream processing logic
+1. 灵活的流处理逻辑
+2. 支持高度动态的拓扑结构
+3. 更细的粒度
+4. 分布式处理
 
-We want the system to support different ways of expressing the stream processing logic. The existing systems we mentioned above require the developer to write a declarative data-flow computation graph, usually by following a functional programming style. This limits the expressiveness and flexibility of the processing logic. Orleans streams are indifferent to the way processing logic is expressed. It can be expressed as a data-flow (e.g., by using [Reactive Extensions (Rx) in .NET](https://msdn.microsoft.com/en-us/data/gg577609.aspx)); as a functional program; as a declarative query; or in a general imperative logic. The logic can be stateful or stateless, may or may not have side effects, and can trigger external actions. All power goes to the developer.
+### 灵活的流处理逻辑
 
-#### Support for dynamic topologies
+我们希望系统能够支持使用不同的方式来表达流处理的逻辑。我们上面提到的现有系统要求开发者写一个声明性的数据流计算图，通常是通过函数式编程风格来实现。这就限制了处理逻辑的可表达性和灵活性。Orleans流不关心处理逻辑的表达方式。它可以被表达为数据流（例如，通过使用[.NET中的响应式扩展(Rx)](https://msdn.microsoft.com/en-us/data/gg577609.aspx)）、一个函数式程序、一个声明式查询或在一个常见的命令式逻辑中。该逻辑可以是有状态的，也可以是无状态的，可能有也可能没有副作用，并且可以触发外部处理。所有的权力都归于开发者。
 
-We want the system to allow for dynamically evolving topologies. The existing systems we mentioned above are usually limited to only static topologies that are fixed at deployment time and cannot evolve at runtime. In the following example of a dataflow expression everything is nice and simple until you need to change it.
+### 支持动态拓扑结构
 
-``
+我们希望该系统能够支持动态改变的拓扑结构。我们上面提到的现有系统通常仅限于在部署时就固定的静态拓扑结构，且不能在运行时改变。在下面这个数据流表达式的例子中，一切都很好很简单，如果你不需要改变它。
+
+```cs
 Stream.GroupBy(x=> x.key).Extract(x=>x.field).Select(x=>x+2).AverageWindow(x, 5sec).Where(x=>x > 0.8) *
-``
+```
 
-Change the threshold condition in the `Where` filter, add an additional `Select` statement or add another branch in the data-flow graph and produce a new output stream. In existing systems this is not possible without tearing down the entire topology and restarting the data-flow from scratch. Practically, those systems will checkpoint the existing computation and will be able to restart from the latest checkpoint. Still, such a restart is disruptive and costly to an online service that produces results in real time. Such a restart becomes especially impractical when we are talking about a large number of such expressions being executed with similar but different (per-user, per-device, etc.) parameters and that continually change.
+改变`Where`过滤器的阈值条件，增加一个额外的`Select`语句或在数据流图中增加一个分支，并产生一个新的输出流。在现有的系统中，如果不拆掉整个拓扑结构并从头开始重新启动数据流，这是不可能的。实际上，这些系统会对现有的计算进行检查，并能够从最新的检查点重新启动。然而，这样的重启对于实时产生结果的在线服务来说是破坏性的，而且成本高昂。当大量的此类表达式被执行，这些表达式具有类似但不同的（每个用户、每个设备等）参数，并且不断变化，这样的重启变得特别不切实际。
 
-We want the system to allow for evolving the stream processing graph at runtime, by adding new links or nodes to the computation graph, or by changing the processing logic within the computation nodes.
+我们希望该系统能够在运行时通过向计算图添加新的链接或节点，或者通过改变计算节点内的处理逻辑，来实现流处理图的修改。
 
-#### Fine grained stream granularity
+### 更细的粒度
 
-In the existing systems, the smallest unit of abstraction is usually the whole flow (topology). However, many of our target scenarios require an individual node/link in the topology to be a logical entity by itself. That way each entity can be potentially managed independently. For example, in the big stream topology comprising multiple links, different links can have different characteristics and can be implemented over different physical transports. Some links can go over TCP sockets, while others over reliable queues. Different links can have different delivery guarantees. Different nodes can have different checkpointing strategies, and their processing logic can be expressed in different models or even different languages. Such flexibility is usually not possible in existing systems.
+在现有的系统中，最小的抽象单位通常是整个流程（拓扑结构）。然而，我们的许多目标场景要求拓扑结构中的单个节点/链接本身就是一个逻辑实体。这样，每个实体就有可能被独立管理。例如，在由多个链接组成的大的流拓扑中，不同的链接可以有不同的特性，可以通过不同的物理传输实现。一些链接可以通过TCP套接字，而另一些则通过可靠的队列。不同的链接可以有不同的交付保证。不同的节点可以有不同的检查点策略，其处理逻辑可以用不同的模型甚至不同的语言来表达。这种灵活性在现有系统中通常是不可能的。
 
-The unit of abstraction and flexibility argument is similar to a comparison of SoA (Service Oriented Architectures) vs. Actors. Actor systems allow more flexibility, since each actor is essentially an independently managed ''tiny service''. Similarly, we want the stream system to allow for such fine grained control.
+抽象单元和灵活性的争论类似于SoA（面向服务的架构）与Actor的比较。Actor系统统允许更高的灵活性，因为每个Actor本质上是一个独立管理的“微服务”。同样，我们希望流系统能够允许这种细粒度的控制。
 
-#### Distribution
+### 分布式处理
 
 And of course, our system should have all the properties of a **"good distributed system"**. That includes:
+当然，我们的系统应该具有 **“好的分布式系统”** 的所有属性。这包括：
 
-1. _Scalability_ - supports large number of streams and compute elements.
-2. _Elasticity_ - allows to add/remove resources to grow/shrink based on load.
-3. _Reliability_ - be resilient to failures
-4. _Efficiency_ - use the underlying resources efficiently
-5. _Responsiveness_ - enable near real time scenarios.
+1. _可扩展性_ - 支持大量的数据流和计算元素
+2. _伸缩性_ - 允许添加/删除资源，以根据负载增长/缩减
+3. _可靠性_ - 有效抵抗故障
+4. _高效率_ - 高效利用底层资源
+5. _响应性_ - 实现近乎实时的场景
 
-These were the requirements we had in mind for building [**Orleans Streaming**](index.md).
+这些是我们在建立[**Orleans流**](index.md)时的要求。
 
 ---
 
-_Clarificaton_: Orleans currently does not directly support writing declarative dataflow expressions like in the example above. The current Orleans Streaming APIs are more low level building blocks, as described [here](streams_programming_APIs.md). Providing declarative dataflow expressions is our future goal.
+_注意_：Orleans目前并不直接支持像上面的例子那样编写声明性的数据流表达式。目前的Orleans流API更多的是低级别的构建模块，如[这里](streams_programming_APIs.md)所描述的。提供声明式数据流表达式是我们未来的目标。
 
-## Next
-[Orleans Streams Programming APIs](streams_programming_APIs.md)
+## 下一步
+[Orleans流编程API](streams_programming_APIs.md)

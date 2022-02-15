@@ -1,34 +1,34 @@
 ---
-title: Heterogeneous silos
+title: 异构Silos
 ---
+## 总览
 
-# Heterogeneous silos
+在一个给定的集群上，Silo可以支持一组不同的Grain类型。
+![](https://github.com/dotnet/orleans-docs/blob/main/src/images/heterogeneous.png?raw=true)
 
-## Overview
+在这个例子中，集群支持`A`，`B`，`C`，`D`，`E`类型的Grain。
+* Grain类型`A`和`B`可以放在1号和2号Silo上。
+* Grain类型`C`可以放在1、2、3号Silo上。
+* Grain类型`D`只能放置在3号Silo上
+* Grain类型`E`只能放置在4号Silo上。
 
-On a given cluster, silos can support a different set of grain types:
-![](~/images/heterogeneous.png)
- 
-In this example the cluster supports grains of type `A`, `B`, `C`, `D`, `E`:
-* Grain types`A`and`B`can be placed on Silo 1 and 2. 
-* Grain type`C`can be placed on Silo 1, 2 or 3. 
-* Grain type`D`can be only placed on Silo 3
-* Grain Type`E`can be only placed on Silo 4.
+所有Silo都应该引用集群中所有Grain类型的接口，但Grain类只应被承载它们的Silo所引用。
 
-All silos should reference interfaces of all grain types of the cluster, but grain classes should only be referenced by the silos that will host them.
+客户端不知道哪个Silo可以支持某个特定的Grain类型。
 
-The client does not know which silo supports a given Grain Type.
+**一个给定的Grain类型的实现在支持它的每个Silo上都必须是相同的。以下情况是无效的：**
 
-**A given Grain Type implementation must be the same on each silo that supports it. The following scenario is NOT valid:**
+在1号和2号Silo上:
 
-On Silo 1 and 2:
 ``` csharp
 public class C: Grain, IMyGrainInterface
 {
    public Task SomeMethod() { … }
 }
 ```
-On Silo 3
+
+在3号Silo上：
+
 ``` csharp
 public class C: Grain, IMyGrainInterface, IMyOtherGrainInterface
 {
@@ -37,17 +37,17 @@ public class C: Grain, IMyGrainInterface, IMyOtherGrainInterface
 }
 ```
 
-## Configuration
+## 配置
 
-No configuration is needed, you can deploy different binaries on each silo in your cluster.
-However, if necessary, you can change the interval that silos and clients check for changes in types supported with the property `TypeMapRefreshInterval` from `TypeManagementOptions`
+无需配置，你可以在集群的每个Silo上部署不同的二进制文件。
+然而，如果有必要，你可以改变Silo和客户端检查类型变化的时间间隔，通过特性`TypeMapRefreshInterval`，它来自`TypeManagementOptions`。
 
-For testing purposes, you can use the property `ExcludedGrainTypes` in `GrainClassOptions`, which is a list names of the types you want to exclude on the silos.
+为了测试，你可以使用`GrainClassOptions`中的特性`ExcludedGrainTypes`，这是一个你想在Silo上排除的类型的名称列表。
 
-## Limitations
+## 限制条件
 
-* Connected clients will not be notified if the set of supported Grain Types changed. In the previous example:
-	* If Silo 4 leaves the cluster, the client will still try to make calls to grain of type `E`. It will fail at runtime with an `OrleansException`.
-	* If the client was connected to the cluster before Silo 4 joined it, the client will not be able to make calls to grain of type `E`. It will fail with an `ArgumentException`
-* Stateless grains are not supported: all silos in the cluster must support the same set of stateless grains.
-* `ImplicitStreamSubscription` are not supported and thus only ["Explicit Subscriptions"](~/docs/streaming/streams_programming_APIs.md) can be used in Orleans Streams.
+* 如果支持的Grain类型集合发生变化，连接的客户端并不会被通知。在前面的例子中：
+	* 如果4号Silo离开集群，客户端仍将尝试对`E`类型的Grain进行调用。它会使运行时抛出`OrleansException`而故障。
+	* 如果客户端在4号Silo加入集群之前已经连接到集群，客户端将不能调用`E`类型的晶粒。它将以`ArgumentException`故障。
+* 不支持无状态Grain：集群中的所有Silo必须支持同一组无状态Grain。
+* 不支持`ImplicitStreamSubscription`，因此只有["显式订阅"](../streaming/streams_programming_APIs.md)可以在Orleans流中使用。

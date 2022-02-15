@@ -1,48 +1,47 @@
 ---
-title: Grain Directory
+title: Grain目录
 ---
-# Grain Directory
 
-## What is the Grain Directory?
+## 什么是Grain目录？
 
-Grains have stable logical identities and may get activated (instantiated) and deactivated many times over the life of the application, but at most one activation of grain exist at any point in time.
-Each time a grain gets activated, it may be placed on a different silo in the cluster.
-When a grain gets activated in the cluster, it gets registered in the global registry, Grain Directory.
-This ensures that subsequent invocations of that grain will be delivered to that activation of the grain, and that no other activations (instances) of that grain will be created.
-Grain Directory is responsible for keeping a mapping between a grain identity and where (which silo) its current activation is at.
+Grain有稳定的逻辑标识，在应用程序的生命周期中可能会被激活（实例化）和停用很多次，但在任何时间点上最多存在一个激活的Grain。
+每次Grain被激活时，它可能被放在集群中的不同Silo上。
+当一个Grain在集群中被激活时，它将被注册到全局注册表，即Grain目录。
+这确保了该Grain的后续调用将被交付给该Grain的激活，并且该Grain的其他激活（实例）将不会被创建。
+Grain目录负责保持Grain标识及其当前激活位置（Silo）之间的映射。
 
-By default, Orleans uses a built-in distributed in-memory directory. 
-This directory is eventually consistent and partitioned across all silos in the cluster in a form of a Distributed Hash Table.
+默认情况下，Orleans使用一个内置的分布式内存目录。
+这个目录最终是一致的，并以分布式哈希表的形式在集群的所有Silo中进行分区。
 
-Starting with 3.2.0, Orleans also supports pluggable implementations of Grain Directory.
+从3.2.0版本开始，Orleans也支持Grain目录的可插拔实现。
 
-Two such plugins are included in the 3.2.0 release:
+在3.2.0版本中包含了两个这样的插件。
 
-- an Azure Table implementation: Microsoft.Orleans.GrainDirectory.AzureStorage (beta)
-- a Redis Store implementation: Microsoft.Orleans.GrainDirectory.Redis (beta)
+- 一个Azure表的实现。`Microsoft.Orleans.GrainDirectory.AzureStorage`(beta)
+- 一个Redis存储实现。`Microsoft.Orleans.GrainDirectory.Redis`(beta)
 
-You can configure which Grain Directory implementation to use on a per-grain type basis, and you can even inject your own implementation.
+你可以在每个Grain类型的基础上配置要使用的Grain目录实现，你甚至可以注入你自己的实现。
 
-## Which Grain Directory should you use?
+## 你该使用哪个Grain目录？
 
-We recommend to always start with the default one (built-in in-memory distributed directory).
-Even though it is eventually consistent and allows for occasional duplicate activation when cluster is unstable, the built-in directory is self-sufficient with no external dependencies, does not requires any configuration, and has been used in production the whole time.
-When you have some experience with Orleans and have a use case for Grain Directory a with stronger single-activation guarantee and/or want to minimize the number of grain that get deactivated when a silo in the cluster shuts down, consider using a storage-based implementation of Grain Directory, such as the Redis implementation.
-Try using it for one or a few grain types first, starting with those that are long-lived and have a significant amount of state or an expensive initialization process.
+我们建议总是从默认的开始（内置的内存分布式目录）。
+尽管它最终是一致的，并且在集群不稳定时允许偶尔的重复激活，但内置目录是自给自足的，没有外部依赖，不需要任何配置，并且一直在生产环境中使用。
+当你对Orleans有一些经验，并且对Grain目录有额外需求，比如，有更强的单次激活保证，和/或想尽量减少集群中的Silo关闭时被停用的Grain数量，可以考虑使用基于存储的Grain目录的实现，如Redis的实现。
+首先尝试将其用于一个或几个Grain类型，可以从那些寿命长、有大量状态或昂贵的初始化过程的Grain开始。
 
-## Configuration
+## 配置
 
-### Default Grain Directory configuration 
+### 默认Grain目录配置
 
-You don't have do to anything; the in-memory grain directory will be automatically used and partitioned across the cluster.
+你不需要做任何事情；内存中的Grain目录将被自动启用，并在集群中进行分区。
 
-### Non-default Grain Directory configuration
+### 非默认Grain目录配置
 
-You need to specify name of the directory plugin to use via an attribute on the grain class and inject the directory plugin with that name during the silo configuration.
+你需要通过Grain类的一个特性来指定要使用的目录插件的名称，并在Silo配置过程中用这个名称注入目录插件。
 
-#### Grain configuration
+#### Grain配置
 
-Specifying the Grain Directory plugin name with the ``GrainDirectory`` attribute:
+用`GrainDirectory`特性指定Grain目录的插件名称：
 
 ```csharp
 [GrainDirectory(GrainDirectoryName = "my-grain-directory")]
@@ -52,9 +51,9 @@ public class MyGrain : Grain, IMyGrain
 }
 ```
 
-#### Silo Configuration
+#### Silo配置
 
-Here we configure the Redis Grain Directory implementation:
+这里我们配置Redis Grain目录的实现：
 
 ```csharp
 siloBuilder.AddRedisGrainDirectory(
@@ -62,7 +61,7 @@ siloBuilder.AddRedisGrainDirectory(
     options => options.ConfigurationOptions = redisConfiguration);
 ```
 
-The Azure Grain Directory is configured like this:
+Azure Grain目录可以像这样配置:
 
 ```csharp
 siloBuilder.AddAzureTableGrainDirectory(
@@ -70,7 +69,7 @@ siloBuilder.AddAzureTableGrainDirectory(
     options => options.ConnectionString =  = azureConnectionString);
 ```
 
-You can configure multiple directories with different names to use for different grain classes:
+你可以配置多个具有不同名称的目录，用于不同的Grain类别：
 
 ```csharp
 siloBuilder

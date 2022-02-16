@@ -1,36 +1,36 @@
 ---
-title: Implementation Details
+title: 实现细节
 ---
-# Implementation Details Overview
+# 概览
 
-## [Orleans Lifecycle](orleans_lifecycle.md)
+## [Orleans生命周期](orleans_lifecycle.md)
 
-Some Orleans behaviors are sufficiently complex that they need ordered startup and shutdown.
-To address this, a general component lifecycle pattern has been introduced.
+一些Orleans的行为足够复杂，需要有序的启动和关闭。
+为了解决这个问题，我们引入了一个通用的组件生命周期模式。
 
-## [Messaging Delivery Guarantees](messaging_delivery_guarantees.md)
+## [消息投递的保证](messaging_delivery_guarantees.md)
 
-Orleans messaging delivery guarantees are **at-most-once**, by default.
-Optionally, if configured to do retries upon timeout, Orleans provides at-least-once delivery instead.
+Orleans的消息传递保证默认情况下是**至多一次的**。
+也可以配置为超时后重试，Orleans会提供至少一次的投递。
 
-## [Scheduler](scheduler.md)
+## [调度器](scheduler.md)
 
-Orleans Scheduler is a component within the Orleans runtime responsible for executing application code and parts of the runtime code to ensure the single threaded execution semantics.
+Orleans调度器是Orleans运行时中的一个组件，负责执行应用程序代码和部分运行时代码，以确保单线程执行语义。
 
-## [Cluster Management](cluster_management.md)
+## [集群管理](cluster_management.md)
 
-Orleans provides cluster management via a built-in membership protocol, which we sometimes refer to as Silo Membership.
-The goal of this protocol is for all silos (Orleans servers) to agree on the set of currently alive silos, detect failed silos, and allow new silos to join the cluster.
+Orleans通过一个内置的成员协议提供集群管理，我们有时将其称为Silo成员。
+这个协议的目的是让所有Silo（Orleans服务器）与当前存活的Silos达成一致，检测失败的Silo，并允许新Silo加入集群。
 
-## [Streams Implementation](streams_implementation/index.md)
+## [流的实现](streams_implementation/index.md)
 
-This section provides a high level overview of Orleans Stream implementation.
-It describes concepts and details that are not visible on the application level.
+本节提供了Orleans流实现的高层次概述。
+它描述了在应用层面上看不到的概念和细节。
 
-## [Load Balancing](load_balancing.md)
+## [负载均衡](load_balancing.md)
 
-Load balancing, in a broad sense, is one of the pillars of the Orleans runtime.
+负载均衡，从广义上讲，是Orleans运行时的支柱之一。
 
-## [Unit Testing](testing.md)
+## [单元测试](testing.md)
 
-This section shows how to unit test your grains to make sure they behave correctly.
+本节展示了如何对你的Grain进行单元测试，以确保它们的行为正确。

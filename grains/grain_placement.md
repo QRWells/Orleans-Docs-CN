@@ -1,8 +1,7 @@
 ---
+title: Grain的安置
 description: 本节介绍了Orleans中Grain的安置
 ---
-
-# Grain安置
 
 Orleans保证当一个Grain被调用时，集群中的某些服务器的内存中有可用的该Grain的实例用以处理请求。
 如果当前集群中Grain没有激活，Orleans会选择一个服务器来激活该Grain。这称为Grain安置。

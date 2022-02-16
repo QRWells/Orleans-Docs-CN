@@ -1,8 +1,6 @@
 ---
-title: Orleans Configuration Guide
+title: Orleans配置指南
 ---
-
-# Orleans Configuration Guide
 
 This Configuration Guide explains the key configuration parameters and how they should be used for most typical usage scenarios.
 

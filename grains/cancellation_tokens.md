@@ -1,12 +1,7 @@
 ---
 title: Grain取消令牌
+description: Orleans运行时提供了名为“Grain取消令牌”的机制，使开发者能够取消正在执行的Grain操作。
 ---
-
-# Grain取消令牌
-
-Orleans运行时提供了名为“Grain取消令牌”的机制，使开发者能够取消正在执行的Grain操作。
-
-
 
 ## 简介
 **Grain取消令牌** 是对标准 .NET`System.Threading.CancellationToken`的封装，它可以实现线程、线程池工作项或`Task`对象之间的合作取消，并可以作为Grain方法参数传递。

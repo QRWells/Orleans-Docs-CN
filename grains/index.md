@@ -1,8 +1,7 @@
 ---
+title: 开发一个Grain
 description: 本节将讲述开发一个Grain所需的基本知识
 ---
-
-# 开发一个Grain
 
 ## 基本设置
 

@@ -3,8 +3,6 @@ title: Grain调用拦截器
 description: 本节介绍了Orleans中的调用拦截器及其相关应用
 ---
 
-# Grain调用拦截器
-
 Grain调用过滤器提供了一种拦截Grain调用的方法。过滤器可以在Grain调用之前和之后执行代码。可以同时设置多个过滤器。过滤器是异步的，它可以修改`RequestContext`、参数和被调用方法的返回值。过滤器还可以检查被调用的方法的`MethodInfo`，可以用来抛出或处理异常。
 
 Grain调用过滤器的一些使用示例：

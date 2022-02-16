@@ -3,8 +3,6 @@ title: 请求上下文
 description: 本节介绍了Orleans中的请求上下文
 ---
 
-# 请求上下文
-
 请求上下文是Orleans的一个特性，它允许应用元数据与请求一起传播，如追踪ID。应用元数据可以在客户端添加，它将与Orleans请求一起传给接收Grain。
 
 该特性由Orleans命名空间中的静态类`RequestContext`实现。这个类暴露了两个简单的方法：

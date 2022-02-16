@@ -3,7 +3,7 @@ title: 可重入性
 description: 本节本节介绍了Orleans中的请求调度机制
 ---
 
-# 请求调度
+## 请求调度
 
 Grain激活有一个*单线程*的执行模式，默认情况下，在开始处理下一个请求之前，会从开始到完成处理每个请求。
 在某些情况下，当一个请求在等待异步操作完成时，一个激活可能需要处理其他请求。
@@ -66,7 +66,7 @@ var b = grainFactory.GetGrain("B");
 await Task.WhenAll(a.CallOther(b), b.CallOther(a));
 ```
 
-## 情况1: 调用没有引发死锁
+### 情况1: 调用没有引发死锁
 
 ![](https://raw.githubusercontent.com/dotnet/orleans-docs/main/src/images/scheduling_8.png)
 
@@ -80,7 +80,7 @@ await Task.WhenAll(a.CallOther(b), b.CallOther(a));
 
 现在，我们将讨论一系列不那么幸运的事件：由于时机上略有不同，相同的代码引发了*死锁*。
 
-## 情况2: 调用引发了死锁
+### 情况2: 调用引发了死锁
 
 ![](https://raw.githubusercontent.com/dotnet/orleans-docs/main/src/images/scheduling_5.png)
 
@@ -94,7 +94,7 @@ await Task.WhenAll(a.CallOther(b), b.CallOther(a));
 
 下一节描述了如何通过允许多个请求相互交叉执行来防止死锁。
 
-## 可重入性
+### 可重入性
 
 Orleans默认选择一个安全的执行流程：一个Grain的内部状态不会被多个请求并发地修改。
 内部状态的并发修改会使逻辑变得复杂，给开发者带来更大的负担。
@@ -117,14 +117,14 @@ Orleans默认选择一个安全的执行流程：一个Grain的内部状态不�
 
 有了可重入，下面的情况就可以有效执行，上述死锁的可能性也消除了。
 
-### 情况3: Grain或方法是可重入的
+#### 情况3: Grain或方法是可重入的
 
 ![](https://raw.githubusercontent.com/dotnet/orleans-docs/main/src/images/scheduling_6.png)
 
 在这个例子中，Grain *A*和*B*能够同时相互调用，而不会出现任何潜在的请求调度死锁，因为这两个晶粒都是*可重入的*。
 下面几节将提供更多关于可重入的细节。
 
-### 可重入Grains
+#### 可重入Grains
 
 `Grain`实现类可以用`[Reentrant]`特性进行标记，以表明不同的请求可以自由交叉进行。
 
@@ -167,7 +167,7 @@ Task Bar()
 
 总的来说，答案还是取决于应用的具体细节。
 
-### 交叉方法
+#### 交叉方法
 
 标有`[AlwaysInterleave]`的Grain接口方法将被交叉使用，无论Grain本身是否是可重入的。请看下面的例子：
 
@@ -209,7 +209,7 @@ await Task.WhenAll(slowpoke.GoFast(), slowpoke.GoFast(), slowpoke.GoFast());
 对`GoSlow`的调用将不会交叉执行，所以两个`GoSlow()`的调用的执行将需要大约20秒。
 另一方面，由于`GoFast`被标记为`[AlwaysInterleave]`，对它的三个调用将被同时执行，总共将在大约10秒内完成，而不是需要至少30秒才能完成。
 
-### 使用谓词的可重入性
+#### 使用谓词的可重入性
 
 Grain类可以指定一个谓词，通过检查请求，在逐个调用的基础上确定是否交叉执行。
 `[MayInterleave(string methodName)]`特性提供了这个功能。

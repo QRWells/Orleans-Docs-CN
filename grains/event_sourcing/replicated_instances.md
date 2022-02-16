@@ -3,8 +3,6 @@ title: 复制的Grain
 description: 本节介绍了Orleans事件溯源中的复制Grain
 ---
 
-## 复制的Grain
-
 <!-- Sometimes, there can be multiple instances of the same grain active, such as when operating a multi-cluster, and using the `[OneInstancePerCluster]` attribute. The JournaledGrain is designed to support replicated instances with minimal friction. It relies on *log-consistency providers* to run the necessary protocols to ensure all instances agree on the same sequence of events. In particular, it takes care of the following aspects:  -->
 
 有时，同一Grain可能有多个实例处于活动状态，例如在操作多集群时，或者使用`[OneInstancePerCluster]`特性时。日志式Grain支持摩擦最小的复制实例。它依靠*日志一致性提供者*来运行必要的协议，以确保所有实例认同相同的事件序列。特别地，它照顾到以下几个方面：

@@ -2,8 +2,6 @@
 title: 外部任务和Grains
 ---
 
-# External Tasks and Grains
-
 在Orleans的设计里，任何从Grain代码中产生的子任务（例如，通过`await`、`ContinueWith`或`Task.Factory.StartNew`产生的）将在与父任务相同的 per-activation [TaskScheduler](https://docs.microsoft.com/dotnet/api/system.threading.tasks.taskscheduler)上进行调度，从而继承了与其他Grain代码相同的*单线程执行模型*。
 这是Grain基于回合的并发的单线程执行背后的基点。
 

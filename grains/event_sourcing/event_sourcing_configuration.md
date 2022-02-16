@@ -3,8 +3,6 @@ title: 配置
 description: 
 ---
 
-# 配置
-
 ## 配置项目引用
 
 ### Grain接口

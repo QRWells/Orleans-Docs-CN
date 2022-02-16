@@ -3,8 +3,6 @@ title: 日志一致性提供者
 description: 本节介绍了Orleans内置的三种日志一致性提供者
 ---
 
-# 内置日志一致性提供者
-
 `Microsoft.Orleans.EventSourcing`包含有几个日志一致性提供者，涵盖了适合入门的基本场景，并具有一些扩展性。
 
 ### Orleans.EventSourcing.*StateStorage*.LogConsistencyProvider

@@ -1,11 +1,8 @@
 ---
 title: Grain服务
-description:  本节介绍了Orleans中的Grain服务
+description: GrainService是一种特殊的Grain：它没有标识，每个Silo中从Silo的启动运行到其关闭。
+
 ---
-
-# Grain服务
-
-GrainService是一种特殊的Grain：它没有标识，每个Silo中从启动运行到关闭。
 
 ## 创建一个Grain服务
 

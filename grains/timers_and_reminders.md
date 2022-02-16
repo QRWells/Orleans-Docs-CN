@@ -2,15 +2,15 @@
 title: 定时器和提醒器
 description: Orleans运行时提供了两种机制，称为定时器和提醒器，使开发者能够为Grains指定定期动作。
 ---
-# 定时器
-## 简介
+## 定时器
+### 简介
 
 **定时器**用于创建无需跨越多个Grain的激活（Grain的实例化）的周期性Grain行为。它与标准.NET中的`System.Threading.Timer`类本质上是相同的。
 此外，定时器在它所操作的Grain激活中保证单线程执行。
 
 每个激活可以有零个或多个与之关联的定时器。运行时在它所关联的激活的运行时上下文中执行每个定时器例程。
 
-## 用法
+### 用法
 
 要启动一个定时器，使用`Grain.RegisterTimer`方法,它返回一个`IDisposable`引用:
 
@@ -26,15 +26,15 @@ public IDisposable RegisterTimer(
 
 如果Grain被停用或发生故障且其Silo崩溃，计时器将停止触发。
 
-## 重要注意事项
+### 重要注意事项
 
 * 启用激活回收后，定时器回调的执行不会将激活的状态从闲置改为正在使用。这意味着定时器不能用于推迟原本闲置激活的停用。
 * 传递给`Grain.RegisterTimer`的周期是指，从`asyncCallback`返回的`Task`被解决的时刻到下一次`asyncCallback`调用应该发生的时刻所经过的时间。这不仅使对`asyncCallback`的连续调用不可能重叠，还使完成`asyncCallback`的用时可以影响`asyncCallback`被调用的频率。这是与`System.Threading.Timer`的语义的重要不同。
 * 每个`asyncCallback`的调用都是在单独的一轮中传递给一个激活，并且永远不会与同一激活的其他轮同时运行。但是请注意，`asyncCallback`的调用不是作为消息传递的，因此不受消息交织语义的影响。这意味着`asyncCallback`的调用应该被认为是在一个可重入Grain上运行，与该Grain的其他消息相比，其行为也是如此。
 
-# 提醒器
+## 提醒器
 
-## 介绍
+### 介绍
 
 提醒器与定时器很相似，但有几个重要的不同点：
 
@@ -45,7 +45,7 @@ public IDisposable RegisterTimer(
 * 提醒器是通过消息传递的，与所有其他Grain方法一样受制于交织语义。
 * 提醒器不应被用于高频率的定时任务--其周期应以分钟、小时或天为单位。
 
-## 配置
+### 配置
 
 提醒器是持久化的，它依靠存储来运行。
 在提醒器子系统运行前，你必须指定使用哪个底层存储。
@@ -87,7 +87,7 @@ var silo = new SiloHostBuilder()
     [...]
 ```
 
-## 用法
+### 用法
 
 使用提醒器的Grain必须实现`IRemindable.ReceiveReminder`方法。
 
@@ -125,7 +125,7 @@ protected Task UnregisterReminder(IGrainReminder reminder)
 protected Task<IGrainReminder> GetReminder(string reminderName)
 ```
 
-## 我该使用哪一个？
+### 我该使用哪一个？
 
 我们建议你在以下情况下使用定时器：
 
@@ -138,7 +138,7 @@ protected Task<IGrainReminder> GetReminder(string reminderName)
 * 定期行为需要在激活以及任何故障中保持存活。
 * 执行不频繁的任务（比如分钟、小时或天级别）
 
-## 结合使用定时器和提醒器
+### 结合使用定时器和提醒器
 
 你可以考虑使用提醒器和定时器的组合来达成目的。
 例如，如果你需要一个小分辨率的定时器，它需要在不同的激活中存活，你可以使用一个每五分钟运行一次的提醒器，其目的是唤醒一个Grain来重新启动一个可能因停用而失效的本地定时器。

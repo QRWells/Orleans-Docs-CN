@@ -93,7 +93,7 @@
 * [总览](implementation/index.md)
 * [Orleans生命周期](implementation/orleans_lifecycle.md)
 * [消息投递的保证](implementation/messaging_delivery_guarantees.md)
-* [调度](implementation/scheduler.md)
+* [调度器](implementation/scheduler.md)
 * [集群管理](implementation/cluster_management.md)
 * [流的实现](implementation/streams_implementation/index.md)
   * [Azure队列流](implementation/streams_implementation/azure_queue_streams.md)

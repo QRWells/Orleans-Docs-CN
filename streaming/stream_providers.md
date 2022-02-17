@@ -4,7 +4,7 @@ description: 本节介绍了Orleans内置的两种流提供者以及创建流提
 ---
 
 流可以有不同的形态和形式。
-一些流可能通过直接的TCP链接投递事件，有些流则通过持久的队列投递事件。
+一些流可能通过直接的TCP链接交付事件，有些流则通过持久的队列交付事件。
 不同的流类型可能使用不同的批处理策略，不同的缓存算法，或不同的回压过程。
 为了避免将流应用限制在这些行为选择上，**流提供者**是Orleans流运行时的扩展点，允许用户实现任何类型的流。
 这个扩展点与[Orleans存储提供者](https://github.com/dotnet/orleans/wiki/Custom%20Storage%20Providers)的设计精神相似。
@@ -29,7 +29,7 @@ Orleans目前内置许多流提供者，包括：[简单消息流提供者](http
 拉取代理的存续、它们的管理、回压、平衡它们之间的队列以及将队列从一个故障的代理移交给另一个代理，都完全由Orleans流运行时管理，这对使用流的应用代码是透明的。
 ## 队列适配器
 
-通过持久队列投递事件的不同流提供者表现出类似的行为，并受制于类似的实现。
+通过持久队列交付事件的不同流提供者表现出类似的行为，并受制于类似的实现。
 因此，我们提供了一个通用的可扩展的[`PersistentStreamProvider`](https://github.com/dotnet/orleans/blob/master/src/Orleans.Core/Streams/PersistentStreams/PersistentStreamProvider.cs)，允许开发者插入不同类型的队列，而不需要从头编写一个全新的流提供者。
 `PersistentStreamProvider`使用一个[`IQueueAdapter`](https://github.com/dotnet/orleans/blob/master/src/Orleans.Core/Streams/QueueAdapters/IQueueAdapter.cs)组件，它抽象了具体的队列实现细节，并提供`enqueue`和`dequeue`事件的方法。
 其余的都是由`PersistentStreamProvider`内部的逻辑来处理。

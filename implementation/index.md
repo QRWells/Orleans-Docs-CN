@@ -8,10 +8,10 @@ title: 实现细节
 一些Orleans的行为足够复杂，需要有序的启动和关闭。
 为了解决这个问题，我们引入了一个通用的组件生命周期模式。
 
-## [消息投递的保证](messaging_delivery_guarantees.md)
+## [消息交付的保证](messaging_delivery_guarantees.md)
 
 Orleans的消息传递保证默认情况下是**至多一次的**。
-也可以配置为超时后重试，Orleans会提供至少一次的投递。
+也可以配置为超时后重试，Orleans会提供至少一次的交付。
 
 ## [调度器](scheduler.md)
 

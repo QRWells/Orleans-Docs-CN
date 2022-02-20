@@ -42,7 +42,7 @@ RaiseEvent(new DepositTransaction() { DepositAmount = amount, Description = desc
 await ConfirmEvents();
 ```
 
-注意，即使你不明确地调用`ConfirmEvents`，事件最终也会被确认--它会在后台自动进行。
+注意，即使你不显式地调用`ConfirmEvents`，事件最终也会被确认--它会在后台自动进行。
 
 ## 实现状态转移
 

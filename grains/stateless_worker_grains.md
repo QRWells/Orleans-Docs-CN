@@ -12,7 +12,7 @@ title: 无状态Worker Grains
 
 1. Orleans运行时可以并将在集群的不同Silo上创建同一个无状态Worker Grain的多个激活。
 2. 对无状态Worker Grain的请求总是在本地执行，也就是在请求来源的同一个Silo上执行，要么是由Silo上运行的Grain发出的，要么是由Silo的客户端网关接收的。因此，从其他Grain或客户端网关对无状态Worker Grain的调用永远不会产生远程消息。
-3. 如果已经存在的无状态Worker Grain繁忙，Orleans运行时将自动创建额外的激活。除非通过可选的`maxLocalWorkers`参数明确指定，否则运行时为每个Silo创建的无状态Worker Grain的最大激活数量默认受限于机器上的CPU核心数。
+3. 如果已经存在的无状态Worker Grain繁忙，Orleans运行时将自动创建额外的激活。除非通过可选的`maxLocalWorkers`参数显式指定，否则运行时为每个Silo创建的无状态Worker Grain的最大激活数量默认受限于机器上的CPU核心数。
 4. 由于2和3，无状态Worker Grain的激活是不可单独寻址的。对一个无状态Worker Grain的两个后续请求可能会被它的不同激活所处理。
 
 无状态Worker Grain提供了一种直接的方式来创建一个自动管理的Grain激活池，它能根据实际负载自动伸缩。

@@ -1,35 +1,33 @@
 ---
-title: Multi-Cluster Configuration
+title: 多集群配置
 ---
 
-## Multi-Cluster Configuration
+多集群配置决定了哪些集群是当前多集群的一部分。它不会自动改变，而是由操作员控制。因此，它与集群内使用的成员机制完全不同，后者自动确定属于集群的Silo集合。
 
-The multi-cluster configuration determines which clusters are currently part of the multi-cluster. It does not change automatically, but is controlled by the operator. Thus, it is quite different from the membership mechanism used within a cluster, which automatically determines the set of silos that are part of the cluster.
+我们对服务中的群组使用以下术语：
+- 如果一个集群至少有一个活跃的Silo，那么它就是*活跃*的，否则就是*不活跃*的
+- 如果一个集群是当前多集群配置的一部分，那么它就是*加入*的，否则就是*未加入*的。
 
-We use the following terminology for the clusters in a service:
-- A cluster is *active* if it has at least one active silo, and *inactive* otherwise
-- A cluster is *joined* if it is part of the current multi-cluster configuration, and *non-joined* otherwise
+活跃/不活跃与加入/未加入是独立的：所有四个组合都是可能的。
 
-Being active/inactive is independent from being joined/non-joined: all four combinations are possible. 
+一个服务的所有集群都由一个[Gossip网络](GossipChannels.md)连接。Gossip网络负责传播配置和状态信息。 
 
-All the clusters for a particular service are connected by a [gossip network](GossipChannels.md). The gossip network propagates configuration and status information.  
+### 注入配置
 
-### Injecting a configuration
+操作员通过向多集群网络注入来发布配置变更。配置可以被注入到任何集群，并从那里传播到所有活动集群。每一个新的配置包含一个组成多集群的集群ID的列表。它也有一个UTC时间戳，用来跟踪它在Gossip网络中的传播情况。
 
-An operator issues configuration changes by injecting them into the multi-cluster network. The configurations can be injected into any cluster, and spread from there to all active clusters. Each new configuration consists of a list of cluster ids that form the multi-cluster. It also has a UTC timestamp that is used to track its propagation through the gossip network.
+最开始，多集群配置是空的，这意味着多集群列表是空的（不包含任何集群）。因此，操作员*必须*注入一个初始的多集群配置。一旦注入，这个配置就会在所有连接的Silo（在运行的时候）和所有指定的Gossip通道（如果这些通道是持久的）中持续存在。
 
-Initially, the multi-cluster configuration is null, which means the multi-cluster list is empty (contains no clusters). Thus, the operator *must* initially inject a multi-cluster configuration. Once injected, this configuration persists in all connected silos (while running) and in all specified gossip channels (if those channels are persistent).
+我们对操作员必须遵循的新配置的注入提出了一些限制：
+-	每个新的配置都可以增加一些集群，或删除一些集群（但不能同时进行）。
+-	操作员不应该在以前的配置变更仍在处理中时发布新的配置。
 
-We pose some restrictions on the injection of new configurations that an operator must follow:
--	Each new configuration may add a number of clusters, or remove a number of clusters (but not both at the same time). 
--	An operator should not issue a new configuration while a previous configuration change is still being processed.
+这些限制确保单例协议等协议即使在配置改变的情况下也能正确地维持激活的互斥。
 
-These restrictions ensure that protocols such as the single-instance-protocol can correctly maintain mutual exclusion of activations even under configuration changes.
+#### 通过“管理Grain”注入
 
-#### Via Management Grain
-
-Multi-cluster configurations can be injected on any node in any cluster, using the Orleans Management Grain.
-For example, to inject a multi-cluster configuration that consists of the three clusters { us1, eu1, us2 }, we can pass a string enumerable to the management grain:
+多集群配置可以在任何集群的任何节点上注入，使用Orleans管理Grain。
+例如，要注入一个由三个集群{ us1, eu1, us2 }组成的多集群配置，我们可以向管理Grain传递一个可枚举的字符串：
 
 ```csharp
    var clusterlist = "us1,eu1,us2".Split(',');
@@ -37,13 +35,13 @@ For example, to inject a multi-cluster configuration that consists of the three 
    mgtGrain.InjectMultiClusterConfiguration(clusterlist, "my comment here"));
 ```
 
-The first argument to `InjectMultiClusterConfiguration` is an enumerable of cluster ids, which is going to define the new multi-cluster configuration. The second argument is an (optional) comment string that can be used to tag configurations with arbitrary information, such as who injected them and why. 
+`InjectMultiClusterConfiguration`的第一个参数是一个可枚举的集群ID列表，它将定义新的多集群配置。第二个参数是一个（可选的）注释字符串，可以用来标记配置的任意信息，如谁注入了它们，为什么注入。
 
-There is an optional third argument, a boolean called `checkForLaggingSilosFirst`, which defaults to true. It means that the system performs a best-effort check to see if there are any silos anywhere that have not caught up to the current configuration yet, and rejects the change if it finds such a silo. This helps to detect violations of the restriction that only one configuration change should be pending at a time (though it cannot guarantee it under all circumstances).
+有一个可选的第三个参数，一个名为`checkForLaggingSilosFirst`的布尔值，默认为`true`。这意味着系统会进行尽力而为的检查，看是否有Silo还没有跟进当前的配置，如果发现这样的Silo，就会拒绝更改。这有助于检测违反限制的行为，即一次只能有一个配置变更（尽管它不能保证在所有情况下都是如此）。
 
-#### Via Default Configuration
+#### 通过默认配置注入
 
-In situations where the multi-cluster configuration is known in advance and the deployment is fresh every time (e.g.  for testing), we may want to supply a default configuration. The global configuration supports an optional attribute `DefaultMultiCluster` which takes a comma-separated list of cluster ids:
+在事先知道多集群配置并且每次部署都是全新的情况下（例如用于测试），我们可能希望提供一个默认配置。全局配置支持一个可选的属性`DefaultMultiCluster`，它需要一个用逗号分隔的集群ID列表：
 
 ```csharp
 var silo = new SiloHostBuilder()
@@ -57,53 +55,50 @@ var silo = new SiloHostBuilder()
   [...]
 ```
 
-After a silo is started with this setting, it checks to see if the current multi-cluster configuration is null, and if so, injects the given configuration with the current UTC timestamp. 
+在使用此设置启动Silo后，它会检查当前的多集群配置是否为空，如果为空，则用当前的UTC时间戳注入给定的配置。
 
-WARNING. Persistent multi-cluster gossip channels (e.g. based on AzureTable) retain the last injected configuration unless they are deleted explicitly. In that case, specifying a DefaultMulticluster has no effect when re-deploying a cluster because the configuration stored in the gossip channels is not null.>
+**警告**：持久化的多集群Gossip通道（例如基于AzureTable）会保留最后注入的配置，除非它们被显式删除。在这种情况下，指定`DefaultMulticluster`在重新部署集群时没有影响，因为存储在Gossip通道中的配置不是空的。
 
-####	Via Gossip Channel
+#### 通过Gossip通道注入
 
-An operator can also inject the configuration directly into the gossip channel. Changes in the channel are picked up and propagated automatically by the periodic background gossip, though possibly very slowly (using the management grain is much faster).  A rough estimate on the propagation time is 30 seconds (or whatever gossip interval is specified in the global configuration) times the binary logarithm of the total number of silos in all clusters. But since the gossip pairs are selected randomly, it can be both much quicker or much slower.  
+操作员也可以将配置直接注入到Gossip通道中。通道中的变化会被周期性的后台Gossip自动接收和传播，尽管可能很慢（使用管理Grain会快得多）。对传播时间的一个粗略估计是30秒（或全局配置中指定的任何Gossip间隔）乘以所有集群中Silo数的以二为底的对数。但是，由于Gossip对是随机选择的，它既可能更快，也可能更慢。 
 
-If using the Azure Table-Based Gossip Channel, operators can inject a new configuration simply by editing the configuration record in the `OrleansGossipTable`, e.g. using some tool for editing data in Azure tables. The configuration record has the following format:
+如果使用基于Azure Table的Gossip渠道，操作员可以通过编辑`OrleansGossipTable`中的配置记录来注入新的配置，例如使用一些工具来编辑Azure Table中的数据。配置记录的格式如下：
 
- 
-|Name               | Type     | Value    |
-|-------------      |--------  |----------|
-|PartitionKey       | String   | the ServiceId |
-|RowKey             | String   | "CONFIG" |
-|Clusters           | String   | comma-separated list of cluster IDs, e.g. "us1,eu1,us2" |
-|Comment            | String   | optional comment |
-|GossipTimestamp    | DateTime    | UTC timestamp for the configuration |
+| 名称            | 类型     | 值                                        |
+| --------------- | -------- | ----------------------------------------- |
+| PartitionKey    | String   | ServiceId                                 |
+| RowKey          | String   | "CONFIG"                                  |
+| Clusters        | String   | 逗号分隔的集群ID列表，例如："us1,eu1,us2" |
+| Comment         | String   | 可选的注释                                |
+| GossipTimestamp | DateTime | 配置的UTC时间戳                           |
 
-<p/>
+**注意**：当在存储中编辑这条记录时，`GossipTimestamp`也必须被设置为一个更新的值（否则变化会被忽略）。最方便和推荐的方法是*删除GossipTimestamp字段*--我们的Gossip通道实现会自动用一个正确的、当前的时间戳替换它（它使用Azure Table的时间戳）。
 
-**NOTE**. When editing this record in storage, the GossipTimestamp must also be set to a newer value than it has currently (otherwise the change is ignored).  The most convenient and recommended way to do this is to *delete the GossipTimestamp field* - our gossip channel implementation then automatically replaces it with a correct, current Timestamp (it uses the Azure Table Timestamp).  
- 
-### Cluster Addition/Removal Procedures
+### 集群的增/删程序
 
-Adding or removing a cluster from the multi-cluster often needs to be coordinated within some larger context. We recommend to always follow the procedures described below when adding/removing clusters from the multi-cluster.
+从多集群中添加或删除一个集群往往需要在一些更大的背景下进行协调。我们建议在从多集群中添加/删除集群时，始终遵循下面描述的程序。
 
-#### Procedure for adding a cluster
+#### 增加集群
 
-1.	Start a new Orleans cluster and wait till all silos are up and running. 
-2.	Inject a configuration that contains the new cluster.
-3.	Start routing user requests to the new cluster.
+1.	启动一个新的Orleans集群，等到所有Silo都启动并运行起来。
+2.	注入一个包含新集群的配置。
+3.	开始将用户请求路由到新集群。
 
-#### Procedure for removing a cluster
+#### 移除集群
 
-1.	Stop routing new user requests to the cluster. 
-2.	Inject a configuration that no longer contains the cluster.
-3.	Stop all silos of the cluster.
+1.	停止将新的用户请求路由到集群。
+2.	注入一个不再包含此集群的配置。
+3.	停止集群的所有Silo。
 
-Once a cluster has been removed in this way, it can be re-added by following the procedure for adding a new cluster. 
+一旦以这种方式删除了一个集群，它还可以按照添加一个新集群的程序重新添加回来。
 
-### Activity on Non-Joined Clusters
+### 未加入的集群的活动
 
-There can be brief, temporary periods of time where a cluster is both active and non-joined:
-- A freshly started cluster may start executing code before it is in the multicluster configuration (between steps 1 and 2 of the procedure for adding a cluster)
-- A cluster that is being decommissioned may still execute code before the silos are shut down (between steps 2 and 3 of the procedure for removing a cluster).
+可能会有临时且短暂的时间，一个集群既是活跃的，又是未加入的：
+- 一个新启动的集群可能在进入多集群配置之前就开始执行代码（在添加集群的步骤1和步骤2之间）。
+- 一个正在退出多集群的集群在Silo关闭之前（在拆除集群的程序的第2和第3步之间），仍然在执行代码。
 
-During those intermediate situations, the following are possible:
--	For global-single-instance grains: A grain may have a duplicate activation on a non-joined cluster. 
--	For versioned grains: activations on non-joined clusters do not receive notifications when the grain state changes.
+在这些中间情况下，有可能出现以下情况：
+-	对于全局单例Grain。一个Grain可能在一个未加入的集群上有重复的激活。
+-	对于版本化的Grain：当Grain状态发生变化时，未加入集群上的激活不会收到通知。

@@ -1,12 +1,10 @@
 ---
-title: Multi-Cluster Silo Configuration
+title: 多集群Silo配置
 ---
 
-## Orleans Silo Configuration
+为了快速了解概况，我们在下面以XML展示了所有相关的配置参数（包括可选参数）：
 
-To get a quick overview, we show all relevant configuration parameters (including optional ones) in XML syntax below:
-
-```html
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <OrleansConfiguration xmlns="urn:orleans">
   <Globals>
@@ -50,22 +48,20 @@ var silo = new SiloHostBuilder()
   [...]
 ```
 
-As usual, all configuration settings can also be read and written programmatically, via the respective members of the `GlobalConfiguration` class.
+像往常一样，所有的配置设置也可以通过`GlobalConfiguration`类的相应成员，以编程方式进行读写。
 
+`Service Id`是一个任意的ID，用于识别该服务。它对所有集群和所有Silo都必须是相同的。
 
-The `Service Id` is an arbitrary ID for identifying this service. It must be the same for all clusters and all silos. 
+`MultiClusterNetwork`部分是可选的，如果不指明，则该Silo的所有多集群支持都将被禁用。
 
-The `MultiClusterNetwork` section is optional - if not present, all multi-cluster support is disabled for this silo.
+在[多集群通信](GossipChannels.md)一节中解释了**必要参数**：`ClusterId`和`GossipChannel`。
 
-The **required parameters** `ClusterId` and `GossipChannel` are explained in the section on [Multi-Cluster Communication](GossipChannels.md).
+可选参数`MaxMultiClusterGateways`和`BackgroundGossipInterval`亦在[多集群通信](GossipChannels.md)一节中解释。
 
-The  optional parameters `MaxMultiClusterGateways` and `BackgroundGossipInterval`  are explained in the section on [Multi-Cluster Communication](GossipChannels.md).
+可选参数`DefaultMultiCluster`在[多集群配置](MultiClusterConfiguration.md)一节中解释。
 
-The optional parameter `DefaultMultiCluster` is explained in the section on [Multi-Cluster Configuration](MultiClusterConfiguration.md).
+可选参数`UseGlobalSingleInstanceByDefault`、`GlobalSingleInstanceRetryInterval`和`GlobalSingleInstanceNumberRetries`在[全局单例Grains](GlobalSingleInstance.md)一节中解释。
 
-The optional parameters `UseGlobalSingleInstanceByDefault`,  `GlobalSingleInstanceRetryInterval` and `GlobalSingleInstanceNumberRetries` are explained in the section on [Global-Single-Instance Grains](GlobalSingleInstance.md).
+## Orleans客户端配置
 
-
-## Orleans Client Configuration
-
-No extra configuration is required for Orleans client. The same client may not connect to silos in different clusters (the silo refuses the connection in that situation). 
+Orleans客户端不需要额外的配置。同一个客户端可能无法连接到不同集群中的Silo（在这种情况下，Silo会拒绝连接）。

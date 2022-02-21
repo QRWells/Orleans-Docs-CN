@@ -1,31 +1,29 @@
 ---
-title: Kubernetes hosting
+title: Kubernetes托管
 ---
 
-# Kubernetes hosting
+Kubernetes是托管Orleans应用程序的一个流行选择。
+Orleans将在Kubernetes中运行，不需要特定的配置，它也可以利用托管平台可以提供的额外信息。
 
-Kubernetes is a popular choice for hosting Orleans applications.
-Orleans will run in Kubernetes without specific configuration, however it can also take advantage of extra knowledge which the hosting platform can provide.
+[`Microsoft.Orleans.Hosting.Kubernetes`](https://www.nuget.org/packages/Microsoft.Orleans.Hosting.Kubernetes)包增加了在Kubernetes集群中托管Orleans应用程序的集成。该包提供了一个扩展方法，`ISiloBuilder.UseKubernetesHosting`，它可以执行以下操作：
 
-The [`Microsoft.Orleans.Hosting.Kubernetes`](https://www.nuget.org/packages/Microsoft.Orleans.Hosting.Kubernetes) package adds integration for hosting an Orleans application in a Kubernetes cluster. The package provides an extension method, `ISiloBuilder.UseKubernetesHosting`, which performs the following actions:
+* `SiloOptions.SiloName`设置为Pod名称
+* `EndpointOptions.AdvertisedIPAddress`设置为Pod的IP
+* `EndpointOptions.SiloListeningEndpoint`与`EndpointOptions.GatewayListeningEndpoint`配置为监听任意地址，各自的端口号通过`SiloPort`与`GatewayPort`配置。如果没有显式指定端口号，则默认为`11111`和`30000`
+* `ClusterOptions.ServiceId`设置为名为`orleans/serviceId`的pod标签的值。
+* `ClusterOptions.ClusterId`设置为名为`orleans/clusterId`的pod标签的值。
+* 在启动过程的初期，Silo将探测Kubernetes，以发现哪些Silo没有相应的pod，并将这些Silo标记为死亡。
+* 同样的过程将在运行时发生在所有Silo的一个子集上，以消除Kubernetes的API服务器的负载。默认情况下，集群中的2个Silo将用于监视Kubernetes。
 
-* `SiloOptions.SiloName` is set to the pod name.
-* `EndpointOptions.AdvertisedIPAddress` is set to the pod IP.
-* `EndpointOptions.SiloListeningEndpoint` &amp; `EndpointOptions.GatewayListeningEndpoint` are configured to listen on any address, with the configured `SiloPort` and `GatewayPort`. Defaults port values of `11111` and `30000` are used if no values are set explicitly).
-* `ClusterOptions.ServiceId` is set to the value of the pod label with the name `orleans/serviceId`.
-* `ClusterOptions.ClusterId` is set to the value of the pod label with the name `orleans/clusterId`.
-* Early in the startup process, the silo will probe Kubernetes to find which silos do not have corresponding pods and mark those silos as dead.
-* The same process will occur at runtime for a subset of all silos, in order to remove the load on Kubernetes' API server. By default, 2 silos in the cluster will watch Kubernetes.
+注意，Kubernetes托管包并不使用Kubernetes进行集群化。对于集群化，仍然需要一个单独的集群提供者。关于配置集群的更多信息，请参阅[服务器配置](../host/configuration_guide/server_configuration.md)。
 
-Note that the Kubernetes hosting package does not use Kubernetes for clustering. For clustering, a separate clustering provider is still needed. For more information on configuring clustering, see the [Server configuration](~/docs/host/configuration_guide/server_configuration.md) documentation.
+这种功能对服务的部署方式提出了一些要求：
 
-This functionality imposes some requirements on how the service is deployed:
+* Silo名称必须匹配Pod名称.
+* Pod必须有`orleans/serviceId`和`orleans/clusterId`标签，与Silo的`ServiceId`和`ClusterId`对应。上述方法将把这些标签传播到Orleans环境变量的相应选项中。
+* Pods必须设置以下环境变量：`POD_NAME`、`POD_NAMESPACE`、`POD_IP`、`ORLEANS_SERVICE_ID`、`ORLEANS_CLUSTER_ID`。
 
-* Silo names must match pod names.
-* Pods must have an `orleans/serviceId` and `orleans/clusterId` label which corresponds to the silo's `ServiceId` and `ClusterId`. The above-mentioned method will propagate those labels into the corresponding options in Orleans from environment variables.
-* Pods must have the following environment variables set: `POD_NAME`, `POD_NAMESPACE`, `POD_IP`, `ORLEANS_SERVICE_ID`, `ORLEANS_CLUSTER_ID`.
-
-The following example shows how to configure these labels and environment variables correctly:
+下面的例子展示了如何正确配置这些标签和环境变量：
 
 ``` yaml
 apiVersion: apps/v1
@@ -110,7 +108,7 @@ spec:
       maxSurge: 1
 ```
 
-For RBAC-enabled clusters, the Kubernetes service account for the pods may also need to be granted the required access:
+对于支持RBAC的集群，Kubernetes服务账户的pod可能也需要被授予所需的权限：
 
 ```yaml
 kind: Role
@@ -136,42 +134,41 @@ roleRef:
   apiGroup: ''
 ```
 
-## Liveness, Readiness, and Startup Probes
+## 存活、就绪和启动探测器
 
-Kubernetes is able to probe pods to determine the health of a service. For more information, see [Configure Liveness, Readiness and Startup Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/) in Kubernetes' documentation. 
+Kubernetes能够探测Pod以确定服务的健康情况。更多信息，参见Kubernetes文档的[配置存活、就绪和启动探测器](https://kubernetes.io/zh/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)。
 
-Orleans uses a cluster membership protocol to promptly detect and recover from process or network failures.
-Each node monitors a subset of other nodes, sending periodic probes.
-If a node fails to respond to multiple successive probes from multiple other nodes, then it will be forcibly removed from the cluster.
-Once a failed node learns that is has been removed, it terminates immediately.
-Kubernetes will restart the terminated process and it will attempt to rejoin the cluster.
+Orleans使用集群成员协议来及时检测和恢复进程或网络故障。
+每个节点监控其他节点的一个子集，定期发送探测器。
+如果一个节点未能对来自其他多个节点的连续探测作出反应，那么它将被强行从集群中移除。
+一旦一个故障的节点得知自己被移除，它就会立即终止工作。
+Kubernetes将重新启动被终止的进程，它将试图重新加入集群。
 
-Kubernetes' probes can help to determine whether a process in a pod is executing and is not stuck in a zombie state. probes do not verify inter-pod connectivity or responsiveness or perform any application-level functionality checks.
-If a pod fails to respond to a liveness probe, then Kubernetes may eventually terminate that pod and reschedule it.
-Kubernetes' probes and Orleans' probes are therefore complimentary.
+Kubernetes的探测器可以帮助确定一个pod中的进程是否在执行，而不是停留在僵尸状态。探测器不会验证pod间的连接性或响应性，也不会执行任何应用层面的功能检查。
+如果一个pod未能响应一个有效性探测器，那么Kubernetes最终可能会终止该pod并重新调度它。
+因此，Kubernetes的探测器和Orleans的探测器是互补的。
 
-The recommended approach is to configure Liveness Probes in Kubernetes which perform a simple local-only check that the application is performing as intended.
-These probes serve to terminate the process in the event that there is a total freeze, for example due to a runtime fault or another unlikely event.
+推荐的方法是在Kubernetes中配置存活探测器，它只执行简单的本地检查，以确保应用程序按预期执行。
+这些探测器的作用是在出现完全冻结的情况下终止进程，例如由于运行时故障或其他小概率事件。
 
-## Resource quotas
+## 资源配额
 
-Kubernetes works in conjunction with the operating system to implement [resource quotas](https://kubernetes.io/docs/concepts/policy/resource-quotas/).
-This allows CPU and memory reservations and/or limits to be enforced.
-For a primary application which is serving interactive load, we recommend not implementing restrictive limits unless necessary.
-It is important to note that requests and limits are substantially different in their meaning and where they are implemented.
-Before setting requests or limits, take the time to gain a detailed understanding of how they are implemented and enforced.
-For example, memory may not be measured uniformly between Kubernetes, the Linux kernel, and your monitoring system. CPU quotas may not be enforced in the way that you expect.
+Kubernetes与操作系统一起工作，实现[资源配额](https://kubernetes.io/zh/docs/concepts/policy/resource-quotas/)。
+这允许CPU和内存保留和/或限制被强制执行。
+对于一个为交互式负载服务的主要应用，我们建议除非必要，否则不要实施限制性的上限。
+需要注意的是，请求和限制在其含义和实施方式上有很大不同。
+在设置请求或限制之前，要花时间详细了解它们是如何实现和执行的。
+例如，Kubernetes、Linux内核和你的监控系统之间可能不会统一测量内存。CPU配额可能不会以你期望的方式执行。
 
-## Troubleshooting
+## 故障诊断
 
-### Pods crash, complaining that `KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined`
+### Pods崩溃，报错信息为：`KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined`
 
-Full exception message: 
+异常信息全文： 
 ``` 
 Unhandled exception. k8s.Exceptions.KubeConfigException: unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined
 at k8s.KubernetesClientConfiguration.InClusterConfig()
 ```
 
-* Check that `KUBERNETES_SERVICE_HOST` and `KUBERNETES_SERVICE_PORT` environment variables are set inside your Pod.
-You can check by executing the following command `kubectl exec -it <pod_name> /bin/bash -c env`.
-* Ensure that `automountServiceAccountToken` set to **true** on your Kubernetes `deployment.yaml`. For more information, see [Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)
+* 检查`KUBERNETES_SERVICE_HOST`和`KUBERNETES_SERVICE_PORT`环境变量是否已在你的Pod内设置。你可以通过执行以下命令来检查`kubectl exec -it <pod_name> /bin/bash -c env`。
+* 确保在你的Kubernetes`deployment.yaml`上将`automountServiceAccountToken`设置为**true**。欲了解更多信息，请参阅[为Pod配置服务账户](https://kubernetes.io/zh/docs/tasks/configure-pod-container/configure-service-account/)。

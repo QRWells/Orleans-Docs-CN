@@ -2,21 +2,21 @@
 title: Orleans配置指南
 ---
 
-This Configuration Guide explains the key configuration parameters and how they should be used for most typical usage scenarios.
+本配置指南解释了关键的配置参数，以及它们在大多数典型场景下应该如何使用。
 
-Orleans can be used in a variety of configurations that fit different usage scenarios, such as local single node deployment for development and testing, cluster of servers, multi-instance Azure worker role, etc. 
+Orleans可以在各种配置中使用，以适应不同的使用场景，如用于开发和测试的本地单节点部署、服务器集群、多实例Azure worker role等。
 
-This guide provides instructions for the key configuration parameters that are necessary to make Orleans run in one of the target scenarios. There are also other configuration parameters that primarily help fine tune Orleans for better performance.
+本指南提供了关键配置参数的说明，这些参数是使Orleans在某个目标场景中运行所必需的。还有其他一些配置参数，主要是帮助微调Orleans以获得更好的性能。
 
-Silos and Clients are configured programmatically via a `SiloHostBuilder` and `ClientBuilder` respectively and a number of supplemental option classes.
-Option classes in Orleans follow the [ASP.NET Options](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/configuration/options/) pattern, and can be loaded via files, environment variables etc.
-Please refer to the [Options pattern documentation](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/configuration/options/) for more information.
+Silo和客户端分别通过`SiloHostBuilder`和`ClientBuilder`以及一些补充的选项类进行程序化配置。
+Orleans的选项类遵循[ASP.NET选项](https://docs.microsoft.com/zh-cn/aspnet/core/fundamentals/configuration/options/)模式，可以通过文件、环境变量等加载。
+请参考[选项模式文档](https://docs.microsoft.com/zh-cn/aspnet/core/fundamentals/configuration/options/)以了解更多信息。
 
-If you want to configure a silo and a client for local development, look at the [Local Development Configuration](local_development_configuration.md) section.
-The [Server Configuration](server_configuration.md) and [Client Configuration](client_configuration.md) sections of the guide cover configuring silos and clients, respectively. 
- 
- The section on [Typical Configurations](typical_configurations.md) provides a summary of a few common configurations.
+如果你想为本地开发配置一个Silo和一个客户端，请看[本地开发配置](local_development_configuration.md)部分。
+本指南的[服务器配置](server_configuration.md)和[客户端配置](client_configuration.md)部分分别涉及配置Silo和客户端。
 
- A list of important core options that can be configured can be found on [this section](list_of_options_classes.md).
+[典型配置](typical_configurations.md)一节提供了一些常见配置的总结。
 
-**Important**: Make sure you properly configure .NET Garbage Collection as detailed in [Configuring .NET Garbage Collection](configuring_.NET_garbage_collection.md).
+可配置的重要核心选项的列表可以在[这一节](list_of_options_classes.md)中找到。
+
+**重要**：确保你正确配置了.NET垃圾回收，详见[配置.NET垃圾回收](configuring_.NET_garbage_collection.md)。

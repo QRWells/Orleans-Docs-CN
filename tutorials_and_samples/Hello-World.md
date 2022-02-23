@@ -1,100 +1,83 @@
 ---
-title: Hello World
+title: Hello World 示例应用
 ---
 
-# Hello World
-
-## Run the Hello World sample
-One way to run this sample is to download a local copy of HelloWorld from [the Samples/2.0/HelloWorld/ folder](https://github.com/dotnet/orleans/tree/master/Samples/2.0/HelloWorld/).
-
-Open two Command Prompt windows and navigate to the HelloWorld folder in each one.
-
-Build the project.
-
-Start the silo in one window with the command:
-```
-dotnet run --project src\SiloHost
-```
-After the silo is running, start the client in the other window with this: 
-```
-dotnet run --project src\OrleansClient
-```
-The silo and client windows will display greetings to each other.
-
-## How Orleans says Hello
-
-In this sample, a client connects with a grain, sends it a greeting and receives a greeting back.
-The client then prints that greeting and that's that.
-Simple enough in theory, but since there's distribution involved, there's a bit more to it.
-
-There are four projects involved -- one for declaring the grain interfaces, one for the grain implementations, and one for the client, one for the silo host
-
-There's one grain interface, in IHello.cs:
+为了开始我们的Orleans之旅，首先打开[`IHelloGrain.cs`](https://github.com/dotnet/orleans/blob/main/samples/HelloWorld/IHelloGrain.cs)，你会发现以下接口声明：
 
 ``` csharp
-public interface IHello : Orleans.IGrainWithIntegerKey
+public interface IHelloGrain : IGrainWithStringKey
 {
-   Task<string> SayHello(string greeting);
+    Task<string> SayHello(string greeting);
 }
 ```
 
-This is simple enough, and we can see that all replies must be represented as a Task or Task<T> in communication interfaces.
-The implementation, found in HelloGrain.cs, is similarly trivial:
+它定义了`IHelloGrain`Grain接口。
+我们知道它是一个Grain接口，因为它实现了`IGrainWithStringKey`。
+这意味着当我们想获得对实现了`IHelloGrain`的Grain的引用时，我们将使用一个字符串值来标识Grain实例。
+在我们的例子中，正如你将要在后面的[`Program.cs`](https://github.com/dotnet/orleans/blob/main/samples/HelloWorld/Program.cs)中看到的，我们将使用字符串`"friend"`来标识我们希望与之通信的Grain，它也可以是任意字符串：
 
 ``` csharp
-public class HelloGrain : Orleans.Grain, HelloWorldInterfaces.IHello
+var friend = grainFactory.GetGrain<IHelloGrain>("friend");
+```
+
+现在，打开[`HelloGrain.cs`](https://github.com/dotnet/orleans/blob/main/samples/HelloWorld/HelloGrain.cs)，我们将看到`IHelloGrain`接口的实现：
+
+``` csharp
+public class HelloGrain : Grain, IHelloGrain
 {
-    Task<string> HelloWorldInterfaces.IHello.SayHello(string greeting)
-    {
-        return Task.FromResult($"You said: '{greeting}', I say: Hello!");
-    }
+    public Task<string> SayHello(string greeting) => Task.FromResult($"Hello, {greeting}!");
 }
 ```
 
-The class inherits from the base class `Grain`, and implements the communication interface defined earlier.
-Since there is nothing that the grain needs to wait on, the method is not declared `async` and instead returns its value using `Task.FromResult()`.
+我们知道`HelloGrain`是一个grain的实现，因为它继承了`Grain`基类。
+该类是用来识别应用程序中的Grain类。
 
-The client, which orchestrates the grain code and is found in OrleansClient project, looks like this:
+`HelloGrain`通过返回一个简单的字符串实现了`IHelloGrain`：`$"Hello, {greeting}"`。
 
-``` csharp
-//configure the client with proper cluster options, logging and clustering
- client = new ClientBuilder()
-   .UseLocalhostClustering()
-   .Configure<ClusterOptions>(options =>
-   {
-       options.ClusterId = "dev";
-       options.ServiceId = "HelloWorldApp";
-   })
-   .ConfigureLogging(logging => logging.AddConsole())
-   .Build();
-
-//connect the client to the cluster, in this case, which only contains one silo
-await client.Connect();
-...
-// example of calling grains from the initialized client
-var friend = client.GetGrain<IHello>(0);
-var response = await friend.SayHello("Good morning, my friend!");
-Console.WriteLine("\n\n{0}\n\n", response);
-```
-
-The silo host, which configures and starts the silo, in SiloHost project looks like this:
+打开[`Program.cs`](https://github.com/dotnet/orleans/blob/main/samples/HelloWorld/Program.cs)，看看Orleans是如何配置的：
 
 ``` csharp
- //define the cluster configuration
-var builder = new SiloHostBuilder()
-//configure the cluster with local host clustering
-    .UseLocalhostClustering()
-    .Configure<ClusterOptions>(options =>
+using var host = new HostBuilder()
+    .UseOrleans(builder =>
     {
-        options.ClusterId = "dev";
-        options.ServiceId = "HelloWorldApp";
+        builder.UseLocalhostClustering();
     })
-    .Configure<EndpointOptions>(options => options.AdvertisedIPAddress = IPAddress.Loopback)
-    .ConfigureLogging(logging => logging.AddConsole());
-//build the silo
-var host = builder.Build();
-//start the silo
+    .Build();
+
 await host.StartAsync();
+
+// Get the grain factory
+var grainFactory = host.Services.GetRequiredService<IGrainFactory>();
+
+// Get a reference to the HelloGrain grain with the key "friend".
+var friend = grainFactory.GetGrain<IHelloGrain>("friend");
+
+// Call the grain and print the result to the console
+var result = await friend.SayHello("Good morning!"); 
+Console.WriteLine("\n\n{0}\n\n", result);
+
+Console.WriteLine("Orleans is running.\nPress Enter to terminate...");
+Console.ReadLine();
+Console.WriteLine("Orleans is stopping...");
+
+await host.StopAsync();
 ```
 
+这个程序创建了一个新的[`HostBuilder`](https://docs.microsoft.com/zh-cn/dotnet/core/extensions/generic-host)，并通过调用`UseOrleans`扩展方法将Orleans加入其中。
+在该调用中，它将Orleans配置为使用本地主机集群，这一般用于开发和测试场景。
+然后程序启动主机，并从服务提供者那里获取`IGrainFactory`实例。
+使用`IGrainFactory`，我们可以得到一个Grain的*引用*。
+在本例中，我们想要一个对名为`"friend"`的`HelloGrain`实例的引用，因此我们调用`grainFactory.GetGrain<IHelloGrain>("friend")`。
+一旦我们有了一个引用，我们就可以使用它，调用`friend.SayHello("Good morning!")`，将结果打印到控制台。
 
+是时候让这个示例运行起来了。通过在终端窗口执行以下命令来实现：
+
+``` powershell
+dotnet run
+```
+
+You should see `Hello, Good morning!!` printed to the console.
+你应该看到控制台里打印出`Hello, Good morning!!`。
+
+Orleans在我们第一次调用`HelloGrain`时（`friend.SayHello(...)`）自动为我们实例化了`"friend"`的实例。
+作为开发者，我们不需要管理这些Grain的生命期。Orleans在需要时激活它们，当它们变得空闲时，就会停用它们。

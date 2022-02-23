@@ -2,13 +2,15 @@
 title: 示例
 ---
 
-## [Hello, World!](https://github.com/dotnet/orleans/raw/main/samples/HelloWorld/#readme)
+## [Hello, World!](https://github.com/dotnet/orleans/blob/main/samples/HelloWorld/README.md)
 
 <p align="center">
     <img src="https://raw.githubusercontent.com/dotnet/orleans/main/samples/HelloWorld/code.png?sanitize=true" />
 </p>
 
 一个*Hello, World!*应用，演示了如何创建和使用你的第一个Grain。
+*Hello, World!*应用是程序员的一种仪式，这就是基于Orleans的我们的*Hello, World!*示例。
+该示例由单个项目构成，它启动基于Orleans的应用程序，向一个Grain发送消息，打印响应，并在用户按键时终止。
 
 **这个程序演示了：**
 
@@ -16,7 +18,7 @@ title: 示例
 * 如何定义并实现一个Grain接口
 * 如何获取Grain的引用，以及如何调用Grain
 
-## [Adventure](https://github.com/dotnet/orleans/raw/main/samples/Adventure/#readme)
+## [Adventure](https://github.com/dotnet/orleans/blob/main/samples/Adventure/README.md)
 
 <p align="center">
     <img src="https://raw.githubusercontent.com/dotnet/orleans/main/samples/Adventure/assets/BoxArt.jpg?sanitize=true" />

@@ -1,28 +1,22 @@
 ---
-title: Messaging Delivery Guarantees
+title: 消息交付的保证
 ---
 
-# Messaging Delivery Guarantees
+默认情况下，Orleans的消息交付保证是**至多一次的**。
+如果配置为超时后重试，Orleans会提供至少一次的交付，这作为可选项提供。
 
-Orleans messaging delivery guarantees are **at-most-once**, by default.
-Optionally, if configured to do retries upon timeout, Orleans provides at-least-once deliv­ery instead.
+更详细地讲：
+* Orleans中的每条消息都带有自动超时（可以配置超时时间）。如果回复没有按时到达，返回的`Task`就会因超时而中断。
+* Orleans可以被配置为在超时后自动重试。默认情况下不进行自动重试。
+* 当然，应用代码也可以选择在超时时进行重试。
 
-In more detail:
+如果Orleans系统被配置为不进行自动重试（默认设置），且应用没有重新发送 - **Orleans提供至多一次的消息交付**。一条消息要么被交付一次，要么根本没有交付。**它永远不会被交付两次**。
 
-* Every message in Orleans has automatic timeout (the exact timeout can be configured). If the reply does not arrive on time, the return Task is broken with timeout exception.
+在有重试的系统中（无论是由运行时还是由应用程序），消息可能到达多次。Orleans目前没有持久化已经到达的消息并抑制第二次交付。(我们认为成本会很高)所以在一个有重试的系统中，Orleans并不保证至多一次交付。
 
-* Orleans can be configured to do automatic retries upon timeout. By default it does NOT do automatic retries.
+**如果你一直无限期地重试**，**消息最终会到达**，由此提供了至少一次的交付保证。请注意，“最终会到达”是需要运行时来保证的。即使你不断重试，它也不会自己免费送来。Orleans提供了最终的交付，因为Grain永远不会进入任何永久的故障状态，故障的Grain最终会在另一个Silo上被重新激活。
 
-* Application code of course can also choose to do retries upon timeout.
+**总结：**在不进行重试的系统中，Orleans保证至多一次的消息交付。而在无限重试的系统中，Orleans保证至少有一次（而不保证最多一次）。
 
-If the Orleans system is configured not to do automatic retries (default setting) and the application is not resending – **Orleans provides at-most-once message delivery**. A message will either be delivered once or not at all. **It will never be delivered twice.**
-
-In the system with retries (either by the runtime or by the application) the message may arrive multiple times. Orleans currently does nothing to durably store which messages already arrived and suppress the second delivery. (We believe this would be pretty costly.) So in a system with retries Orleans does NOT guarantee at most once delivery.
-
-**If you keep retrying potentially indefinitely**, **the message will eventually arrive**, thus providing at-least-once delivery guarantee. Notice that “will eventually arrive” is something that the runtime needs to guarantee. It does not come for free just by itself even if you keep retrying. Orleans provides eventual delivery since grains never go into any permanent failure state and a failed grain will eventually be re-activated on another silo.
-
-**So to summarize**: in the system without retries Orleans guarantees at-most-once message delivery. In the system with infinite retries Orleans guarantees at-least-once (and does NOT guarantee at-most-once).
-
-
-**Note**:
-In the [Orleans technical report](http://research.microsoft.com/pubs/210931/Orleans-MSR-TR-2014-41.pdf) we accidentally only mentioned the 2nd option with automatic retries. We forgot to mention that by default with no retries, Orleans provides at-most-once delivery.
+**注意**:
+在[Orleans技术报告](http://research.microsoft.com/pubs/210931/Orleans-MSR-TR-2014-41.pdf)中，我们不小心只提到了自动重试的第二个选项。我们忘了提到默认情况下，在没有重试的情况下，Orleans提供最多一次的传递。

@@ -2,7 +2,7 @@
 title: 示例
 ---
 
-## [Hello, World!](https://github.com/dotnet/orleans/blob/main/samples/HelloWorld/README.md)
+## [Hello, World!](./Hello-World.md)
 
 <p align="center">
     <img src="https://raw.githubusercontent.com/dotnet/orleans/main/samples/HelloWorld/code.png?sanitize=true" />

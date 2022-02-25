@@ -1,21 +1,19 @@
 ---
-title: Orleans Lifecycle
+title: Orleans生命周期
 ---
 
-# Orleans Lifecycle
+## 概述
 
-## Overview
+Orleans的一些行为足够复杂，需要有序的启动和关闭。
+一些具有这种行为的组件包括Grain、Silo和客户端。
+为了解决这个问题，我们引入了一个通用的组件生命周期模式。
+该模式由一个可观察的生命周期和生命周期观察者组成，前者负责对组件的启动和关闭阶段发出信号，后者负责在特定阶段执行启动或关闭操作。
 
-Some Orleans behaviors are sufficiently complex that they need ordered startup and shutdown.
-Some components with such behaviors include grains, silos, and clients.
-To address this, a general component lifecycle pattern has been introduced.
-This pattern consists of an observable lifecycle, which is responsible for signaling on stages of a component’s startup and shutdown, and lifecycle observers which are responsible for performing startup or shutdown operations at specific stages.
+也可参见[Grain生命周期](../grains/grain_lifecycle.md)和[Silo生命周期](../host/silo_lifecycle.md)。
 
-See also [Grain Lifecycle](~/docs/grains/grain_lifecycle.md) and [Silo Lifecycle](~/docs/host/silo_lifecycle.md).
+## 可观察生命周期
 
-## Observable Lifecycle
-
-Components that need ordered startup and shutdown can use an observable lifecycle which allows other components to observe the LiveCycle and receive notification when a stage is reached during startup or shutdown.
+需要有序启动和关闭的组件可以使用一个可观察的生命周期，它允许其他组件观察其生命周期，并在启动或关闭期间的某个阶段接收通知。
 
 ```csharp
     public interface ILifecycleObservable
@@ -24,11 +22,11 @@ Components that need ordered startup and shutdown can use an observable lifecycl
     }
 ```
 
-The subscribe call registers an observer for notification when a stage is reached while starting or stopping.  The observer name is for reporting purposes.  The stage indicated at which point in the startup/shutdown sequence the observer will be notified.  Each stage of lifecycle is observable.  All observers will be notified when the stage is reached when starting and stopping.  Stages are started in ascending order and stopped in descending order.  The observer can unsubscribe by disposing of the returned disposable.
+订阅调用注册了一个观察者，以便在启动或停止期间到达某个阶段时进行通知。观察者的名称用于报告。“阶段”表示在启动/关闭序列中的何处，观察者将被通知。生命周期的每个阶段都是可观察的。在启动和停止期间到达该阶段时，所有观察者都会收到通知。各个阶段是按升序启动，降序停止的。观察者可以通过释放返回的`IDisposable`来取消订阅。
 
-## Lifecycle Observer
+## 生命周期观察者
 
-Components which need to take part in another component’s lifecycle need provide hooks for their startup and shutdown behaviors and subscribe to a specific stage of an observable lifecycle.
+需要参与另一个组件的生命周期的组件需要为其启动和关闭行为提供钩子，并订阅可观察的生命周期的某个阶段。
 
 ```csharp
     public interface ILifecycleObserver
@@ -38,15 +36,15 @@ Components which need to take part in another component’s lifecycle need provi
     }
 ```
 
-`OnStart/OnStop` will be called when the stage subscribed to is reached during startup/shutdown.
+`OnStart/OnStop`将在启动/关闭过程期间到达订阅的阶段时被调用。
 
-## Utilities
+## 辅助工具
 
-For convenience, helper functions have been created for common lifecycle usage patterns.
+为方便起见，我们为常见的生命周期使用模式创建了帮助函数。
 
-### Extensions
+### 扩展函数
 
-Extension functions exist for subscribing to observable lifecycle which do not require that the subscribing component implement ILifecycleObserver.  Instead, these allow components to pass in lambdas or members function to be called at the subscribed stages.
+我们提供了用于订阅可观察生命周期的扩展函数，它不要求订阅组件实现`ILifecycleObserver`。相反，这些函数允许组件传入lambda表达式或成员函数，以便在订阅阶段调用。
 
 ```csharp
 IDisposable Subscribe(this ILifecycleObservable observable, string observerName, int stage, Func<CancellationToken, Task> onStart, Func<CancellationToken, Task> onStop);
@@ -54,7 +52,7 @@ IDisposable Subscribe(this ILifecycleObservable observable, string observerName,
 IDisposable Subscribe(this ILifecycleObservable observable, string observerName, int stage, Func<CancellationToken, Task> onStart);
 ```
 
-Similar extension functions allow generic type arguments to be used in place of the observer name.
+类似的扩展函数允许使用泛型参数来代替观察者名称。
 
 ```csharp
 IDisposable Subscribe<TObserver>(this ILifecycleObservable observable, int stage, Func<CancellationToken, Task> onStart, Func<CancellationToken, Task> onStop);
@@ -62,9 +60,9 @@ IDisposable Subscribe<TObserver>(this ILifecycleObservable observable, int stage
 IDisposable Subscribe<TObserver>(this ILifecycleObservable observable, int stage, Func<CancellationToken, Task> onStart);
 ```
 
-### Lifecycle Participation
+### 参与生命周期
 
-Some extensibility points need a way of recognizing what components are interested in participating in a lifecycle.  A lifecycle participant marker interface has been introduced for this purpose.  More about how this is used will be covered when exploring silo and grain lifecycles.
+一些可扩展点需要一种方法来识别哪些组件对参与生命周期感兴趣。为此，我们引入了一个生命周期参与者标记接口。在探索Silo和Grain生命周期时，将涉及更多关于如何使用这个接口的内容。
 
 ```csharp
     public interface ILifecycleParticipant<TLifecycleObservable>
@@ -74,8 +72,9 @@ Some extensibility points need a way of recognizing what components are interest
     }
 ```
 
-## Example
-From our lifecycle tests, below is an example of a component that takes part in an observable lifecycle at multiple stages of the lifecycle.
+## 示例
+
+从我们的生命周期测试来看，下面是一个组件在生命周期的多个阶段参加可观察的生命周期的例子：
 
 ```csharp
 enum TestStages

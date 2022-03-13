@@ -1,25 +1,18 @@
 ---
-title: Load Balancing
+title: 负载均衡
 ---
 
-# Load Balancing
+**负载均衡，从广义上讲，是Orleans运行时的支柱之一**。Orleans运行时试图让一切都变得均衡，因为均衡可以最大限度地利用资源，避免热点，从而带来更好的性能，同时也有助于弹性的发挥。Orleans的负载均衡适用于多个地方。下面是一个粗略的列表，列出了运行时如何执行负载均衡：
 
-**Load balancing, in a broad sense, is one of the pillars of the Orleans runtime**. Orleans runtime tries to make everything balanced, since balancing allows to maximize resource usage and avoid hotspots, which leads to better performance, as well as helps with elasticity. Load balancing in Orleans applies in multiple places. Below is a non-exhaustive list of places where the runtime performs balancing:
+1. **默认的Actor安置策略是随机安置**--新的激活被随机地放置在各个Silo。这使得安置更为均衡，还能防止大多数情况下的热点。
+2. 一个更高级的**ActivationCountPlacement**试图使所有Silo上的激活数量相等，从而使激活在Silo之间的分布更加均匀。这对弹性特别重要。
+3. **Grain目录服务**是建立在分布式散列表之上的，它本质上是平衡的。目录服务将Grain映射到激活，每个Silo都拥有全局映射表的一部分，这个表在所有Silo中以平衡的方式进行全局分区。我们为此使用了具有虚拟Bucket的一致哈希。
+4. 客户端连接到所有的**网关**，并以平衡的方式将他们的请求分散到各个网关。
+5. **提醒器服务**是一个分布式的分区运行服务。哪个Silo负责提供哪个提醒器的分配是通过一致散列在所有Silo中平衡的，就像在Grain目录中一样。
+6. **Silo内的性能关键组件被分区，它们之间的工作被局部平衡**。这样，Silo的运行时可以充分利用所有可用的CPU核心，而不会产生Silo内的瓶颈。这适用于所有本地资源：将工作分配给线程、套接字、调度责任、队列等。
+7. **StreamQueueBalance**平衡了集群中各Silo从持久化队列中提取事件的责任。
 
-1.	**Default actor placement strategy is random** - new activations are placed randomly across silos. That results in a balanced placement and prevents hotspots for most scenarios.
+还要注意的是，**均衡，从广义上讲，并不一定意味着失去了局部性**。在平衡的同时仍然可以保持良好的局部性。例如，当均衡意味着分片/分区时，你可以对某个逻辑任务的责任进行分区，同时在每个分区内仍然保持局部性。这既适用于本地均衡，也适用于分布式均衡。
 
-2.	A more advanced **ActivationCountPlacement** tries to equalize the number of activations on all silos, which results in a more even distribution of activations across silos. This is especially important for elasticity.
-
-3.	**Grain Directory service** is built on top of a Distributed Hash Table, which inherently is balanced. The directory service maps grains to activations, each silo owns part of the global mapping table, and this table is globally partitioned in a balanced way across all silos. We use consistent hashing with virtual buckets for that.
-
-4.	Clients connect to all **gateways** and spread their requests across them, in a balanced way.
-
-5.	**Reminder service** is a distributed partitioned runtime service. The assignment of which silo is responsible to serve which reminder is balanced across all silos via consistent hashing, just like in grain directory.
-
-6.	**Performance critical components within a silo are partitioned, and the work across them is locally balanced**. That way the silo runtime can fully utilize all available CPU cores and not create in-silo bottlenecks. This applies to all local resources: allocation of work to threads, sockets, dispatch responsibilities, queues, etc.
-
-7.	**StreamQueueBalance** balances the responsibility of pulling events from persistence queues across silos in the cluster.
-
-Also notice that **balancing, in a broad sense, does not necessarily mean loss of locality**. One can be balanced and still maintain a good locality. For example, when balancing means sharding/partitioning, you can partition responsibility for a certain logical task, while still maintaining  locality within each partition. That applies both for local and distributed balancing.
-
-Refer to this presentation on [Balancing Techniques in Orleans](~/docs/resources/presentations/Balancing%20Techniques%20in%20Orleans.pptx) for more details.
+Refer to this presentation on [Balancing Techniques in Orleans] for more details.
+更多细节请参考这个关于[Orleans的均衡技术](https://github.com/dotnet/orleans-docs/blob/main/src/docs/resources/presentations/Balancing%20Techniques%20in%20Orleans.pptx)的介绍。
